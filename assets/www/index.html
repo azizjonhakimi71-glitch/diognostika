@@ -1,0 +1,1796 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>RadiScan AI — ИИ-диагностика снимков</title>
+<style>
+  :root{
+    --bg:#0b1117; --bg2:#101922; --card:#142029; --line:#22323f;
+    --text:#e8f0f5; --muted:#8fa3b2; --accent:#2dd4bf; --accent2:#38bdf8;
+    --ok:#34d399; --warn:#fbbf24; --bad:#f87171;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.55}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+  header{position:sticky;top:0;z-index:10;background:rgba(11,17,23,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.125rem}
+  .logo i{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#06231f;font-style:normal;font-size:1rem}
+  .logo span{color:var(--accent)}
+  nav{display:flex;gap:24px;font-size:0.875rem;color:var(--muted)}
+  nav a:hover{color:var(--text)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border-radius:10px;border:0;font-size:0.9375rem;font-weight:600;font-family:inherit;line-height:1.2;cursor:pointer;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;transition:.2s}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(45,212,191,.25)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+  .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--accent);box-shadow:none}
+
+  .hero{padding:80px 0 56px;background:radial-gradient(800px 380px at 70% -10%,rgba(45,212,191,.14),transparent),radial-gradient(600px 300px at 10% 0,rgba(56,189,248,.1),transparent)}
+  .hero .wrap{display:grid;grid-template-columns:1.2fr 1fr;gap:48px;align-items:center}
+  .tag{display:inline-block;padding:5px 12px;border:1px solid var(--line);border-radius:99px;font-size:0.75rem;color:var(--accent);margin-bottom:18px;background:var(--bg2)}
+  h1{font-size:2.875rem;line-height:1.1;letter-spacing:-.02em;margin-bottom:18px}
+  h1 em{font-style:normal;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{color:var(--muted);font-size:1.0625rem;max-width:520px;margin-bottom:28px}
+  .hero .row{display:flex;gap:12px;flex-wrap:wrap}
+  .stats{display:flex;gap:32px;margin-top:36px}
+  .stats b{display:block;font-size:1.625rem}
+  .stats span{font-size:0.8125rem;color:var(--muted)}
+  .scan{aspect-ratio:1;border-radius:20px;border:1px solid var(--line);background:#05090d;position:relative;overflow:hidden}
+  .scan canvas{width:100%;height:100%;display:block}
+  .scan::after{content:"";position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);box-shadow:0 0 18px var(--accent);animation:sweep 3.2s ease-in-out infinite}
+  @keyframes sweep{0%{top:4%}50%{top:94%}100%{top:4%}}
+
+  section{padding:64px 0}
+  h2{font-size:1.875rem;margin-bottom:8px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin-bottom:32px}
+
+  .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .mode{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;cursor:pointer;transition:.2s;text-align:left;color:inherit;font:inherit}
+  .mode:hover{border-color:var(--accent)}
+  .mode.active{border-color:var(--accent);background:linear-gradient(180deg,rgba(45,212,191,.1),var(--card))}
+  .mode .ic{font-size:1.625rem;margin-bottom:8px}
+  .mode h3{font-size:1.125rem;margin-bottom:4px}
+  .mode p{font-size:0.8125rem;color:var(--muted)}
+
+  .lab{margin-top:24px;display:grid;grid-template-columns:340px 1fr;gap:20px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+  .panel h4{font-size:0.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px}
+  .opts{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
+  .opt{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg2);cursor:pointer;font-size:0.875rem;color:var(--text);text-align:left;font-family:inherit;transition:.15s}
+  .opt:hover{border-color:var(--muted)}
+  .opt.active{border-color:var(--accent);color:var(--accent)}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:22px 12px;text-align:center;color:var(--muted);font-size:0.875rem;cursor:pointer;transition:.2s}
+  .drop:hover,.drop.over{border-color:var(--accent);color:var(--text);background:rgba(45,212,191,.05)}
+  .drop b{display:block;color:var(--text);margin-bottom:2px}
+  .contrast{display:flex;align-items:center;gap:10px;margin:-8px 0 22px;padding:11px 14px;border:1px dashed var(--line);border-radius:10px;font-size:0.8125rem;color:var(--muted);cursor:pointer;transition:.15s}
+  .contrast[hidden]{display:none}
+  .contrast:hover,.contrast:has(input:checked){border-color:var(--accent);color:var(--text)}
+  .contrast input{accent-color:var(--accent);width:16px;height:16px;flex:none}
+  .cnote{margin:-14px 0 22px;padding:10px 14px;border-left:3px solid var(--accent);background:rgba(94,234,212,.06);border-radius:0 10px 10px 0;font-size:0.78rem;line-height:1.5;color:var(--muted)}
+  .cnote[hidden]{display:none}
+  .srcbox{margin-top:18px}
+  .srcbox h3{margin:0 0 10px}
+  .srcbox h4{margin:18px 0 8px;font-size:.8125rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .srcbox p,.srcbox li{color:var(--muted);font-size:.9rem;line-height:1.6}
+  .srcbox ul{margin:0;padding-left:20px}
+  .srcrow{display:flex;gap:8px;margin-top:10px}
+  .srcbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--text);font-family:inherit;font-size:0.8125rem;cursor:pointer;transition:.15s}
+  .srcbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .srcbtn svg{width:18px;height:18px;flex:none}
+  .scanbox{margin-top:14px;padding:14px;border:1px solid rgba(45,212,191,.35);border-radius:12px;background:rgba(45,212,191,.05);font-size:0.8125rem;display:flex;flex-direction:column;gap:10px}
+  .scanbox[hidden]{display:none}
+  .scanbox.err{border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.07)}
+  .sb-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:600;color:var(--text)}
+  .sb-chip{font-size:.68rem;font-weight:600;letter-spacing:.04em;padding:3px 9px;border-radius:99px;white-space:nowrap}
+  .sb-chip.ok{background:rgba(45,212,191,.16);color:var(--accent)}
+  .sb-chip.warn{background:rgba(251,191,36,.16);color:var(--warn)}
+  .sb-sub{color:var(--muted)}
+  .sb-q{list-style:none;display:flex;flex-direction:column;gap:6px;color:var(--muted)}
+  .sb-q li{display:flex;gap:8px;align-items:flex-start}
+  .sb-q li::before{content:"\2713";color:var(--ok);font-weight:700;flex:none}
+  .sb-q li.warn{color:var(--text)}
+  .sb-q li.warn::before{content:"!";color:var(--warn)}
+  .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{padding:9px;background:var(--bg2);border:0;color:var(--muted);font-family:inherit;font-size:0.8125rem;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#04201c;font-weight:600}
+  .frame{display:flex;flex-direction:column;gap:6px;color:var(--muted)}
+  .frame input{width:100%;accent-color:var(--accent)}
+  .tips{margin-top:12px;font-size:0.8125rem;color:var(--muted)}
+  .tips summary{cursor:pointer;color:var(--accent2)}
+  .tips ul{margin:8px 0 0 18px;display:flex;flex-direction:column;gap:5px}
+  .actions{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+  .link{background:none;border:0;color:var(--accent2);cursor:pointer;font:inherit;font-size:0.8125rem;text-decoration:underline;margin-top:10px}
+
+  .viewer{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  .stage{position:relative;aspect-ratio:1;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+  .stage canvas,.stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+  .stage .empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:0.875rem;text-align:center;padding:20px}
+  .stage .hud{position:absolute;left:10px;top:8px;font:11px ui-monospace,Consolas,monospace;color:var(--accent);opacity:.9;z-index:2}
+  .loader{position:absolute;inset:0;background:rgba(5,9,13,.78);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:3;font-size:0.875rem}
+  .loader.on{display:flex}
+  .bar{width:60%;height:6px;background:var(--line);border-radius:9px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
+  .heat{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:0.75rem;color:var(--muted)}
+  .heat input{accent-color:var(--accent)}
+
+  .report h5{font-size:1.0625rem;margin-bottom:4px}
+  .report .meta{font-size:0.75rem;color:var(--muted);margin-bottom:16px}
+  .placeholder{color:var(--muted);font-size:0.875rem;padding:30px 4px;text-align:center}
+  .find{margin-bottom:14px}
+  .find .top{display:flex;justify-content:space-between;font-size:0.875rem;margin-bottom:5px}
+  .find .top span:last-child{font-variant-numeric:tabular-nums;color:var(--muted)}
+  .find .t{height:7px;background:var(--bg2);border-radius:9px;overflow:hidden}
+  .find .t i{display:block;height:100%;border-radius:9px;width:0;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+  .sev{display:inline-block;font-size:0.6875rem;padding:2px 8px;border-radius:99px;margin-left:8px;font-weight:600}
+  .sev.ok{background:rgba(52,211,153,.15);color:var(--ok)}
+  .sev.warn{background:rgba(251,191,36,.15);color:var(--warn)}
+  .sev.bad{background:rgba(248,113,113,.15);color:var(--bad)}
+  .concl{margin-top:18px;padding:14px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);font-size:0.875rem}
+  .concl b{display:block;margin-bottom:4px;color:var(--accent)}
+  .recs{margin:12px 0 0 18px;font-size:0.8125rem;color:var(--muted)}
+  .recs li{margin-bottom:3px}
+
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+  .step .n{width:30px;height:30px;border-radius:50%;background:rgba(45,212,191,.12);color:var(--accent);display:grid;place-items:center;font-weight:700;margin-bottom:12px}
+  .step h3{font-size:1rem;margin-bottom:4px}
+  .step p{font-size:0.8125rem;color:var(--muted)}
+
+  .list{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .list .panel h3{font-size:1rem;margin-bottom:10px}
+  .list li{font-size:0.875rem;color:var(--muted);margin:0 0 6px 18px}
+
+  .warn-box{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.35);border-radius:14px;padding:18px 20px;font-size:0.875rem;color:#f3dfa6}
+  footer{border-top:1px solid var(--line);padding:28px 0;color:var(--muted);font-size:0.8125rem;text-align:center}
+
+  /* ===== Visual polish ===== */
+  :root{--glass:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));--glow:0 20px 60px -20px rgba(45,212,191,.35)}
+  body{background:radial-gradient(1200px 600px at 50% -200px,#0f2a2e 0,transparent 70%),var(--bg);background-attachment:fixed}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse at 50% 20%,#000 20%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse at 50% 20%,#000 20%,transparent 75%)}
+  .logo i{box-shadow:0 0 22px rgba(45,212,191,.5)}
+  .hero{position:relative;padding:96px 0 72px}
+  .hero::before,.hero::after{content:"";position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
+  .hero::before{width:360px;height:360px;background:rgba(45,212,191,.18);right:6%;top:40px}
+  .hero::after{width:300px;height:300px;background:rgba(56,189,248,.14);left:-60px;bottom:0}
+  .hero .wrap{position:relative;z-index:1}
+  h1{font-size:3.5rem;font-weight:800}
+  .tag{background:rgba(45,212,191,.08);border-color:rgba(45,212,191,.3)}
+  .tag::first-letter{animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+  .btn{box-shadow:0 10px 30px -10px rgba(45,212,191,.6)}
+  .stats{gap:14px}
+  .stats>div{background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:12px 18px}
+  .stats b{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .scan{border-radius:28px;box-shadow:var(--glow),inset 0 0 0 1px rgba(45,212,191,.15);overflow:visible;background:#04080b}
+  .scan canvas{border-radius:28px}
+  .scan::after{left:6%;right:6%}
+  .scan .cr{position:absolute;width:26px;height:26px;border:2px solid var(--accent);z-index:2;opacity:.8}
+  .cr.a{left:14px;top:14px;border-right:0;border-bottom:0;border-top-left-radius:8px}
+  .cr.b{right:14px;top:14px;border-left:0;border-bottom:0;border-top-right-radius:8px}
+  .cr.c{left:14px;bottom:14px;border-right:0;border-top:0;border-bottom-left-radius:8px}
+  .cr.d{right:14px;bottom:14px;border-left:0;border-top:0;border-bottom-right-radius:8px}
+  .chip{position:absolute;z-index:3;padding:9px 14px;border-radius:12px;background:rgba(14,24,32,.82);backdrop-filter:blur(10px);border:1px solid var(--line);font-size:0.8125rem;box-shadow:0 12px 30px -10px #000;animation:float 5s ease-in-out infinite}
+  .chip b{display:block;font-size:0.9375rem}
+  .chip small{color:var(--muted)}
+  .chip.c1{left:-28px;top:26%}
+  .chip.c2{right:-22px;bottom:18%;animation-delay:-2.5s}
+  .chip i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+  @keyframes float{50%{transform:translateY(-10px)}}
+
+  .eyebrow{display:block;font-size:0.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;font-weight:600}
+  h2{font-size:2.25rem;font-weight:800}
+  .panel,.mode,.step{background:var(--glass),var(--card);border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 18px 40px -24px #000}
+  .mode,.step{transition:transform .25s,border-color .25s,box-shadow .25s}
+  .mode:hover,.step:hover{transform:translateY(-4px);border-color:rgba(45,212,191,.5)}
+  .mode.active{box-shadow:var(--glow);border-color:var(--accent)}
+  .mode .ic{width:48px;height:48px;border-radius:14px;background:rgba(45,212,191,.1);display:grid;place-items:center;margin-bottom:14px;color:var(--accent)}
+  .mode.active .ic{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c}
+  .mode .ic svg{width:26px;height:26px}
+  .opt{border-radius:12px;padding:13px 16px;position:relative}
+  .opt.active{background:rgba(45,212,191,.1);box-shadow:inset 3px 0 0 var(--accent)}
+  .drop{border-radius:14px;background:rgba(255,255,255,.02)}
+  .stage{border-radius:16px;box-shadow:0 0 0 1px rgba(45,212,191,.12),0 20px 50px -25px rgba(45,212,191,.35)}
+  .find .t{height:8px}
+  .find .t i{box-shadow:0 0 12px currentColor}
+  .concl{background:linear-gradient(160deg,rgba(45,212,191,.08),rgba(56,189,248,.03));border-color:rgba(45,212,191,.25);border-radius:14px}
+  .step .n{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;box-shadow:0 8px 20px -8px var(--accent)}
+  .warn-box{border-radius:18px}
+  footer{background:var(--bg2)}
+  /* interactive darkening chip */
+  .chip.c1{cursor:pointer;min-width:230px;transition:border-color .2s,box-shadow .2s}
+  .chip.c1:hover,.chip.c1.open,.chip.c1:focus-visible{animation-play-state:paused;border-color:var(--accent);box-shadow:0 14px 40px -10px rgba(45,212,191,.45);outline:0}
+  .chip .hint{color:var(--accent)}
+  .chip .chev{font-style:normal;margin-left:auto;padding-left:10px;color:var(--muted);transition:transform .25s}
+  .chip.c1 b{display:flex;align-items:center}
+  .chip.c1.open .chev{transform:rotate(180deg)}
+  .chip.c1.open{animation:none;width:290px;z-index:5;top:auto;bottom:5%}
+  .chip.c2{cursor:pointer;transition:border-color .2s,box-shadow .2s}
+  .chip.c2:hover,.chip.c2.open,.chip.c2:focus-visible{animation-play-state:paused;border-color:var(--accent);box-shadow:0 14px 40px -10px rgba(45,212,191,.45);outline:0}
+  .chip.c2 b{display:flex;align-items:center}
+  .chip.c2.open{animation:none;width:290px;z-index:6;bottom:8%}
+  .chip.c2.open .chev{transform:rotate(180deg)}
+  .chip.c2.open .sevPanel{display:block}
+  .fastRow{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:.74rem;color:var(--muted);cursor:pointer}
+  .fastRow input{accent-color:var(--accent)}
+  #timeRange{width:100%;margin:6px 0 0;accent-color:var(--accent);cursor:pointer}
+  .sevPanel{display:none;margin-top:12px;cursor:default}
+  .chip.c1.open .sevPanel{display:block}
+  .sevBar{height:8px;border-radius:9px;background:linear-gradient(90deg,#34d399,#fbbf24 50%,#f87171);position:relative;opacity:.9}
+  .sevFill{position:absolute;right:0;top:0;bottom:0;background:rgba(10,16,22,.82);border-radius:0 9px 9px 0;transition:none}
+  #sevRange{width:100%;margin:6px 0 0;accent-color:var(--accent);cursor:pointer}
+  .sevScale{display:flex;justify-content:space-between;font-size:.68rem;color:var(--muted);margin-top:-2px}
+  .sevBtns{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+  .sevBtns button{flex:1;min-width:38px;padding:5px 0;border-radius:8px;border:1px solid var(--line);background:var(--bg2);color:var(--text);font:inherit;font-size:.72rem;cursor:pointer;transition:.15s}
+  .sevBtns button:hover{border-color:var(--accent)}
+  .sevBtns button.on{background:var(--accent);color:#04201c;border-color:var(--accent);font-weight:700}
+  .sevTxt{margin-top:10px;font-size:.78rem;color:var(--muted);line-height:1.4}
+  .stat{cursor:pointer;position:relative;transition:border-color .2s,transform .2s,background .2s,box-shadow .2s;user-select:none}
+  .stat:hover{border-color:rgba(45,212,191,.55);transform:translateY(-2px)}
+  .stat:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .stat.on{border-color:var(--accent);background:linear-gradient(160deg,rgba(45,212,191,.14),rgba(255,255,255,.02));box-shadow:0 12px 30px -14px rgba(45,212,191,.5)}
+  .stat::after{content:"▾";position:absolute;right:10px;top:8px;font-size:.7rem;color:var(--muted);transition:transform .25s}
+  .stat.on::after{transform:rotate(180deg);color:var(--accent)}
+  .statPanel{margin-top:14px;padding:18px;border-radius:16px;background:var(--glass),var(--card);border:1px solid rgba(45,212,191,.3);box-shadow:var(--glow);animation:infoIn .3s ease;max-width:680px}
+  .statPanel[hidden]{display:none}
+  .statPanel h6{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:12px}
+  .sp-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid rgba(255,255,255,.06)}
+  .sp-row>div{flex:1}.sp-row b{display:block;font-size:.95rem}.sp-row small{color:var(--muted);font-size:.78rem}
+  .sp-ic{width:36px;height:36px;border-radius:10px;background:rgba(45,212,191,.12);color:var(--accent);display:grid;place-items:center;flex:none}
+  .sp-ic svg{width:20px;height:20px}
+  .sp-n{font-size:.78rem;color:var(--muted);white-space:nowrap}
+  .chipBtn{font:inherit;font-size:.8rem;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--bg2);color:var(--text);cursor:pointer;transition:.15s}
+  .chipBtn:hover{border-color:var(--accent);color:var(--accent)}
+  .chipBtn.go{background:var(--accent);color:#04201c;border-color:var(--accent);font-weight:600}
+  .chipBtn.go:hover{color:#04201c;filter:brightness(1.08)}
+  .sp-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .sp-cols b{display:block;font-size:.9rem;margin-bottom:8px}
+  .sp-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .sp-step{display:flex;gap:12px;align-items:center;margin-bottom:12px;opacity:0;animation:infoIn .4s ease forwards;animation-delay:var(--d)}
+  .sp-num{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:700;font-size:.8rem;display:grid;place-items:center;flex:none}
+  .sp-body{flex:1}.sp-top{display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:5px}.sp-top em{font-style:normal;color:var(--muted)}
+  .sp-bar{height:6px;background:var(--bg2);border-radius:9px;overflow:hidden}
+  .sp-bar i{display:block;height:100%;width:0;border-radius:9px;background:linear-gradient(90deg,var(--accent),var(--accent2));animation:fillBar .9s ease forwards;animation-delay:calc(var(--d) + .2s)}
+  @keyframes fillBar{to{width:var(--w)}}
+  .sp-note{font-size:.74rem;color:var(--muted);margin-top:10px}
+  @media(max-width:600px){.sp-cols{grid-template-columns:1fr}.sp-row{flex-wrap:wrap}}
+  .ai-fab{position:fixed;right:22px;bottom:22px;z-index:60;display:flex;align-items:center;gap:10px;padding:13px 20px 13px 16px;border-radius:99px;border:0;cursor:pointer;font:inherit;font-weight:700;font-size:.95rem;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;box-shadow:0 14px 36px -10px rgba(45,212,191,.7);transition:transform .2s,box-shadow .2s}
+  .ai-fab:hover{transform:translateY(-2px)}
+  .ai-fab svg{width:22px;height:22px;flex:none}
+  .ai-fab::before{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 0 rgba(45,212,191,.55);animation:aiPulse 2.4s infinite;pointer-events:none}
+  .ai-fab.on::before{animation:none}
+  @keyframes aiPulse{70%{box-shadow:0 0 0 16px rgba(45,212,191,0)}100%{box-shadow:0 0 0 0 rgba(45,212,191,0)}}
+  .ai-panel{position:fixed;right:22px;bottom:86px;z-index:60;width:min(390px,calc(100vw - 24px));height:min(580px,calc(100vh - 120px));display:flex;flex-direction:column;border-radius:20px;background:var(--card);border:1px solid rgba(45,212,191,.3);box-shadow:0 30px 80px -20px #000,var(--glow);overflow:hidden;animation:infoIn .25s ease}
+  .ai-panel[hidden]{display:none}
+  .ai-head{display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(160deg,rgba(45,212,191,.16),rgba(56,189,248,.05));border-bottom:1px solid var(--line)}
+  .ai-head>div:nth-child(2){flex:1}
+  .ai-head b{display:block;font-size:.98rem}
+  .ai-head small{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--muted)}
+  .ai-head small i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
+  .ai-ava{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;display:grid;place-items:center;font-weight:800;flex:none}
+  .ai-x{background:none;border:0;color:var(--muted);font-size:1.6rem;line-height:1;cursor:pointer;padding:2px 8px;border-radius:8px}
+  .ai-x:hover{color:var(--text);background:rgba(255,255,255,.06)}
+  .ai-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+  .ai-m{max-width:88%;padding:10px 13px;border-radius:14px;font-size:.86rem;line-height:1.5;animation:infoIn .25s ease}
+  .ai-m.bot{align-self:flex-start;background:var(--bg2);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .ai-m.user{align-self:flex-end;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;border-bottom-right-radius:4px;font-weight:500}
+  .ai-m small{color:var(--muted)}
+  .ai-m i{color:var(--muted)}
+  .ai-m.typing{display:flex;gap:4px;padding:12px 14px}
+  .ai-m.typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:aiDot 1s infinite}
+  .ai-m.typing span:nth-child(2){animation-delay:.15s}.ai-m.typing span:nth-child(3){animation-delay:.3s}
+  @keyframes aiDot{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+  .ai-act{display:block;margin-top:8px;width:100%;text-align:left;font:inherit;font-size:.8rem;padding:8px 12px;border-radius:10px;border:1px solid rgba(45,212,191,.4);background:rgba(45,212,191,.1);color:var(--accent);cursor:pointer;transition:.15s}
+  .ai-act:hover{background:var(--accent);color:#04201c}
+  .ai-chips{display:flex;gap:6px;overflow-x:auto;padding:0 14px 10px;scrollbar-width:none}
+  .ai-chips::-webkit-scrollbar{display:none}
+  .ai-chips button{flex:none;font:inherit;font-size:.76rem;padding:6px 11px;border-radius:99px;border:1px solid var(--line);background:var(--bg2);color:var(--text);cursor:pointer;white-space:nowrap;transition:.15s}
+  .ai-chips button:hover{border-color:var(--accent);color:var(--accent)}
+  .ai-form{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--line);background:rgba(255,255,255,.02)}
+  .ai-form input{flex:1;min-width:0;font:inherit;font-size:.88rem;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);color:var(--text);outline:0}
+  .ai-form input:focus{border-color:var(--accent)}
+  .ai-form button{flex:none;width:42px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-size:1rem;cursor:pointer}
+  @media(max-width:600px){.ai-fab span{display:none}.ai-fab{padding:14px}.ai-panel{right:8px;left:8px;width:auto;bottom:80px;height:min(78vh,calc(100vh - 100px))}}
+  .hdr-right{display:flex;align-items:center;gap:12px}
+  .lang{position:relative}
+  .lang-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:99px;border:1px solid var(--line);background:var(--bg2);color:var(--text);font:inherit;font-size:.82rem;cursor:pointer;transition:border-color .2s}
+  .lang-btn:hover,.lang-btn[aria-expanded=true]{border-color:var(--accent)}
+  .lang-btn em{font-style:normal;color:var(--muted);font-size:.7rem}
+  .flag{display:inline-flex;width:22px;height:15px;border-radius:3px;overflow:hidden;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.15)}
+  .flag svg{width:100%;height:100%;display:block}
+  .lang-menu{position:absolute;right:0;top:calc(100% + 8px);min-width:170px;margin:0;padding:6px;list-style:none;border-radius:14px;background:var(--card);border:1px solid rgba(45,212,191,.3);box-shadow:0 20px 50px -15px #000;z-index:70;animation:infoIn .18s ease}
+  .lang-menu[hidden]{display:none}
+  .lang-menu li{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;font-size:.88rem;cursor:pointer;color:var(--text)}
+  .lang-menu li:hover,.lang-menu li:focus-visible{background:rgba(45,212,191,.12);outline:0}
+  .lang-menu li span:nth-child(2){flex:1}
+  .lang-menu li i{font-style:normal;color:var(--accent);opacity:0}
+  .lang-menu li.on i{opacity:1}
+  @media(max-width:600px){.hdr-right .btn{display:none}}
+  .stage .hud{top:auto;bottom:8px}
+  .badge{position:absolute;right:10px;top:8px;z-index:2;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:99px;background:rgba(45,212,191,.16);color:var(--accent);border:1px solid rgba(45,212,191,.4)}
+  .info{animation:infoIn .35s ease}
+  @keyframes infoIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .info .mm{font-size:.8rem;color:var(--accent2);margin-bottom:10px}
+  .info p{font-size:.92rem;color:var(--text);margin-bottom:12px}
+  .info h6{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:14px 0 6px;font-weight:600}
+  .info ul{margin:0 0 4px 18px;font-size:.88rem;color:var(--muted)}
+  .info li{margin-bottom:3px}
+  .info .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .info .tags span{font-size:.78rem;padding:4px 10px;border-radius:99px;background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);color:var(--accent)}
+  .info .go{margin:16px 0 0;font-size:.8rem;color:var(--muted)}
+  .proto{margin-top:18px;padding:16px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+  .proto h6{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:12px}
+  .proto p{font-size:.84rem;color:var(--muted);margin-bottom:8px;line-height:1.5}
+  .proto p b{color:var(--text);font-weight:600}
+  .proto p.abn{color:var(--text);background:rgba(251,191,36,.07);border-left:3px solid var(--warn);padding:6px 10px;border-radius:0 8px 8px 0}
+  .proto mark{background:rgba(45,212,191,.18);color:var(--accent);border-radius:4px;padding:0 4px}
+  .proto .pn{font-size:.74rem;opacity:.8;margin-top:12px}
+  .proto .btn{margin-top:8px;padding:9px 16px;font-size:.82rem}
+  .proto .ptext{display:block;width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--text);font:inherit;font-size:.8rem;resize:vertical}
+  .areas{list-style:none;margin:0}
+  .areas li{margin:0}
+  .areas button{width:100%;text-align:left;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.06);color:var(--muted);font:inherit;font-size:.92rem;padding:9px 2px;cursor:pointer;transition:.15s;display:flex;justify-content:space-between}
+  .areas button::after{content:"→";opacity:0;transition:.15s;color:var(--accent)}
+  .areas button:hover{color:var(--text);padding-left:8px}
+  .areas button:hover::after{opacity:1}
+  section,.report,#top{scroll-margin-top:72px}
+
+  /* ===== Desktop: full-width fluid layout ===== */
+  @media(min-width:881px){
+    .wrap{max-width:none;padding:0 clamp(28px,5vw,120px)}
+    .hero{min-height:calc(100vh / var(--z) - 64px);display:flex;align-items:center;padding:56px 0}
+    .hero .wrap{width:100%;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(40px,6vw,120px)}
+    .hero p{max-width:640px;font-size:1.125rem}
+    .scan{width:min(100%,calc(100vh / var(--z) - 230px));margin-left:auto}
+    .stats{gap:16px}
+    .lab{grid-template-columns:clamp(320px,26vw,440px) minmax(0,1fr)}
+    .viewer{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px}
+    .panel{padding:26px}
+    .stage{width:min(100%,calc(100vh - 300px));min-width:320px}
+    .heat{width:100%}
+    section{padding:clamp(64px,9vh,110px) 0}
+    #how,#coverage{min-height:calc(60vh / var(--z));display:flex;align-items:center}
+    #how .wrap,#coverage .wrap{width:100%}
+    .step,.list .panel{padding:28px}
+  }
+  :root{--z:1}
+  html{font-size:clamp(16px,.55vw + 8px,30px)}
+  @media(max-width:880px){html{font-size:16px}}
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media(max-width:880px){.chip{display:none} h1{font-size:2.25rem}
+    .hero{padding:48px 0 40px}.hero .wrap{gap:36px}.hero p{font-size:1rem}
+    .scan{max-width:420px;width:100%;margin:0 auto}
+    section{padding:44px 0}h2{font-size:1.75rem}
+    .lab{gap:16px}.viewer{gap:18px}
+    .stage{max-width:560px;margin:0 auto}.heat{max-width:560px;margin:10px auto 0}
+  }
+  @media(max-width:600px){
+    .wrap{padding:0 16px}
+    header .wrap{height:58px}
+    header .btn{padding:9px 14px;font-size:0.8125rem}
+    .logo{font-size:1rem}
+    h1{font-size:1.875rem}
+    .hero .row{flex-direction:column}.hero .row .btn{width:100%}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .stats>div{padding:10px 10px}.stats b{font-size:1.25rem;white-space:nowrap}.stats span{font-size:0.6875rem;display:block;line-height:1.25}
+    .panel{padding:16px}
+    .mode{padding:16px;display:grid;grid-template-columns:48px 1fr;column-gap:14px;align-items:center}
+    .mode .ic{grid-row:1/3;margin:0}
+    .find .top{font-size:0.8125rem;gap:8px}
+    .scan::after{display:none}
+  }
+  @media(hover:none){.mode:hover,.step:hover{transform:none}.btn:hover{transform:none}}
+
+  @media(max-width:880px){
+    .hero .wrap,.lab,.viewer{grid-template-columns:1fr}
+    .modes,.steps,.list{grid-template-columns:1fr}
+    h1{font-size:2.125rem} nav{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="#top"><i>✚</i>RadiScan <span>AI</span></a>
+    <nav>
+      <a href="#lab">Диагностика</a>
+      <a href="#how">Как это работает</a>
+      <a href="#coverage">Направления</a>
+    </nav>
+    <div class="hdr-right">
+      <div class="lang" id="lang"></div>
+      <a class="btn" href="#lab">Загрузить снимок</a>
+    </div>
+  </div>
+</header>
+
+<div id="top" class="hero">
+  <div class="wrap">
+    <div>
+      <span class="tag">● Макет · демо-версия</span>
+      <h1 data-i18n-html>Предварительная диагностика по <em>рентгену, КТ и МРТ</em></h1>
+      <p>Загрузите снимок — система выделит подозрительные области, оценит вероятность патологий и подготовит предварительное заключение для врача и пациента.</p>
+      <div class="row">
+        <a class="btn" href="#lab">Попробовать анализ</a>
+        <a class="btn ghost" href="#how">Как это работает</a>
+      </div>
+      <div class="stats">
+        <div class="stat" role="button" tabindex="0" data-p="modes" aria-expanded="false"><b>3</b><span>вида исследований</span></div>
+        <div class="stat" role="button" tabindex="0" data-p="areas" aria-expanded="false"><b id="statAreas">20</b><span>областей исследования</span></div>
+        <div class="stat" role="button" tabindex="0" data-p="time" aria-expanded="false"><b id="statTime">~10 сек</b><span>на разбор</span></div>
+      </div>
+    </div>
+    <div class="scan"><canvas id="heroCanvas" width="520" height="520"></canvas>
+      <span class="cr a"></span><span class="cr b"></span><span class="cr c"></span><span class="cr d"></span>
+      <div class="chip c1" id="sevChip" tabindex="0" role="button" aria-expanded="false" aria-label="Степень затемнения">
+        <small>Рентген лёгких <span class="hint">· нажмите</span></small>
+        <b><i id="sevDot"></i>Затемнение · <span id="sevVal">62</span>%<em class="chev">▾</em></b>
+        <div class="sevPanel" id="sevPanel">
+          <div class="sevBar"><div class="sevFill" id="sevFill"></div></div>
+          <input type="range" id="sevRange" min="0" max="100" value="62" aria-label="Затемнение, %">
+          <div class="sevScale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+          <div class="sevBtns"><button data-v="0">0%</button><button data-v="25">25%</button><button data-v="50">50%</button><button data-v="62">62%</button><button data-v="80">80%</button><button data-v="100">100%</button></div>
+          <div class="sevTxt" id="sevTxt"></div>
+        </div>
+      </div>
+      <div class="chip c2" id="timeChip" tabindex="0" role="button" aria-expanded="false" aria-label="Время подготовки заключения">
+        <small>Заключение <span class="hint">· нажмите</span></small>
+        <b><i style="background:var(--ok)"></i>Готово за&nbsp;<span id="timeVal">10 сек</span><em class="chev">▾</em></b>
+        <div class="sevPanel">
+          <input type="range" id="timeRange" min="10" max="60" step="1" value="10" aria-label="Время анализа, секунд">
+          <div class="sevScale"><span>10</span><span>20</span><span>30</span><span>45</span><span>60</span></div>
+          <div class="sevBtns"><button data-v="10">10 с</button><button data-v="15">15 с</button><button data-v="30">30 с</button><button data-v="45">45 с</button><button data-v="60">1 мин</button></div>
+          <div class="sevTxt" id="timeTxt"></div>
+          <label class="fastRow"><input type="checkbox" id="fastDemo" checked> Ускорить показ в демо (×5)</label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section id="lab">
+  <div class="wrap">
+    <h2>Диагностика снимка</h2>
+    <p class="sub">Выберите вид исследования и область, загрузите изображение и запустите анализ.</p>
+
+    <div class="modes" id="modes"></div>
+
+    <div class="lab">
+      <div class="panel">
+        <h4>Область исследования</h4>
+        <div class="opts" id="studies"></div>
+        <label class="contrast" id="contrastRow" hidden><input type="checkbox" id="contrast"><span>С контрастным усилением</span></label>
+        <div class="cnote" id="cnote" hidden></div>
+        <h4>Снимок</h4>
+        <div class="drop" id="drop">
+          <b>Перетащите файл сюда</b>
+          или нажмите для выбора (JPG, PNG, DICOM)
+        </div>
+        <div class="srcrow">
+          <button class="srcbtn" id="camBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/></svg>Сфотографировать</button>
+          <button class="srcbtn" id="pickBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>Выбрать файл</button>
+        </div>
+        <input type="file" id="file" accept="image/*,.dcm,.dicom,application/dicom" multiple hidden>
+        <input type="file" id="cam" accept="image/*" capture="environment" hidden>
+        <div class="scanbox" id="scanbox" hidden></div>
+        <details class="tips">
+          <summary>Как сфотографировать снимок</summary>
+          <ul>
+            <li>Положите снимок на светлый экран или негатоскоп, без бликов и теней.</li>
+            <li>Держите телефон ровно над снимком, чтобы он занимал почти весь кадр.</li>
+            <li>Выключите вспышку: она даёт яркий блик.</li>
+            <li>Коснитесь снимка на экране телефона, чтобы навести фокус.</li>
+            <li>Если есть файл из аппарата (DICOM, JPG), загрузите его: качество будет лучше.</li>
+          </ul>
+        </details>
+        <button class="link" id="demoBtn">Вернуть пример снимка</button>
+        <div class="actions">
+          <button class="btn" id="run" disabled>Анализировать</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="viewer">
+          <div>
+            <h4>Снимок</h4>
+            <div class="stage" id="stage">
+              <div class="empty" id="empty">Снимок не загружен</div>
+              <canvas id="view"></canvas>
+              <canvas id="overlay"></canvas>
+              <div class="hud" id="hud"></div>
+              <div class="badge" id="badge" style="display:none">Пример снимка</div>
+              <div class="loader" id="loader"><span id="loadTxt">Анализ…</span><div class="bar"><i id="bar"></i></div></div>
+            </div>
+            <label class="heat"><input type="checkbox" id="heatToggle" checked> Показывать подозрительные зоны</label>
+          </div>
+          <div class="report" id="report">
+            <h4>Заключение</h4>
+            <div class="placeholder">Результат появится здесь после анализа.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" style="background:var(--bg2)">
+  <div class="wrap">
+    <h2>Как это работает</h2>
+    <p class="sub">Четыре шага от файла до предварительного заключения.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Загрузка</h3><p>Снимок в формате изображения или DICOM (в планах).</p></div>
+      <div class="step"><div class="n">2</div><h3>Распознавание</h3><p>Определяется тип исследования и область тела.</p></div>
+      <div class="step"><div class="n">3</div><h3>Анализ</h3><p>Нейросеть ищет переломы, очаги, затемнения, образования.</p></div>
+      <div class="step"><div class="n">4</div><h3>Заключение</h3><p>Вероятности, карта зон и рекомендации по дальнейшим шагам.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="coverage">
+  <div class="wrap">
+    <h2>Направления</h2>
+    <p class="sub">Что покрывает первая версия. Список будет расширяться.</p>
+    <div class="list">
+      <div class="panel"><h3>Цифровой рентген</h3><ul class="areas" id="ul-xray"></ul></div>
+      <div class="panel"><h3>КТ</h3><ul class="areas" id="ul-ct"></ul></div>
+      <div class="panel"><h3>МРТ</h3><ul class="areas" id="ul-mri"></ul></div>
+    </div>
+    <div class="warn-box" style="margin-top:28px" data-i18n-html>
+      <b>Важно.</b> Это демонстрационный макет: результаты анализа в нём имитируются и не основаны на реальной нейросети. Готовая система будет давать только <b>предварительную</b> оценку, которая не заменяет заключение врача-радиолога и не является диагнозом.
+    </div>
+    <div class="panel srcbox">
+      <h3>Источники и ограничения</h3>
+      <p>Описания областей, протоколы и памятки по контрасту составлены по открытым профессиональным источникам: ACR Appropriateness Criteria, ACR Manual on Contrast Media, ACR Manual on MR Safety, материалам ESR, RadiologyInfo.org и NIBIB.</p>
+      <h4>Что показывают свежие исследования (2025–2026)</h4>
+      <ul>
+        <li>ИИ помогает сортировать рентгенограммы и находить лёгочные узлы, но пока не доказано, что он улучшает исходы лечения.</li>
+        <li>Фотон-счётная КТ может снижать дозу и объём контраста, но изучена пока на небольших группах пациентов.</li>
+        <li>Сокращённые и ускоренные протоколы МРТ изучаются, но не заменяют полное исследование во всех случаях.</li>
+      </ul>
+      <h4>Поэтому</h4>
+      <p>RadiScan AI даёт только предварительную оценку, не ставит диагноз и всегда направляет к врачу.</p>
+    </div>
+  </div>
+</section>
+
+<footer>© 2026 RadiScan AI · макет проекта · не является медицинским изделием</footer>
+
+<script src="i18n-uz.js"></script>
+<script src="i18n-tg.js"></script>
+<script src="i18n-scan.js"></script>
+<script src="i18n-xray.js"></script>
+<script src="i18n-ct.js"></script>
+<script src="i18n-mri.js"></script>
+<script src="i18n-safety.js"></script>
+<script>
+/* ---------- i18n: Russian is the source text; uz / tg dictionaries are keyed by the Russian string ---------- */
+const LANGS={ru:{code:'RU',name:'Русский',loc:'ru-RU'},uz:{code:'UZ',name:'O‘zbekcha',loc:'uz-UZ'},tg:{code:'TJ',name:'Тоҷикӣ',loc:'tg-TJ'}};
+let LANG='ru'; try{const s=localStorage.getItem('lang');if(s&&LANGS[s])LANG=s;}catch(_){}
+window.I18N=window.I18N||{};
+const tr=(s,v)=>{
+  let r=s; if(LANG!=='ru'){const d=I18N[LANG];if(d&&d[s]!==undefined&&d[s]!=='')r=d[s];}
+  return v?r.replace(/\{(\w+)\}/g,(m,k)=>v[k]!==undefined?v[k]:m):r;
+};
+/* static markup is captured once (before any render) and re-translated on every language change */
+const STATIC_TXT=[],STATIC_ATTR=[],STATIC_HTML=[];
+(function(){
+  const cyr=/[А-Яа-яЁё]/;
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>STATIC_HTML.push([el,el.innerHTML.trim()]));
+  const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;
+  while(n=w.nextNode()){
+    const p=n.parentElement;
+    if(!p||/^(SCRIPT|STYLE)$/.test(p.tagName)||p.closest('[data-i18n-html]')||!cyr.test(n.nodeValue))continue;
+    const m=n.nodeValue.match(/^(\s*)([\s\S]*?)(\s*)$/);STATIC_TXT.push([n,m[1],m[2],m[3]]);
+  }
+  document.querySelectorAll('[aria-label],[placeholder],[title]').forEach(el=>['aria-label','placeholder','title'].forEach(a=>{
+    const v=el.getAttribute(a);if(v&&cyr.test(v))STATIC_ATTR.push([el,a,v]);}));
+})();
+function applyStatic(){
+  STATIC_TXT.forEach(([n,a,t,b])=>{n.nodeValue=a+tr(t)+b;});
+  STATIC_ATTR.forEach(([el,a,v])=>el.setAttribute(a,tr(v)));
+  STATIC_HTML.forEach(([el,h])=>{el.innerHTML=tr(h);});
+  document.title=tr('RadiScan AI — ИИ-диагностика снимков');
+  document.documentElement.lang=LANG;
+}
+const FLAGS={
+  ru:'<svg viewBox="0 0 22 15"><rect width="22" height="5" fill="#fff"/><rect y="5" width="22" height="5" fill="#1c57a5"/><rect y="10" width="22" height="5" fill="#d52b1e"/></svg>',
+  uz:'<svg viewBox="0 0 22 15"><rect width="22" height="4.6" fill="#1eb4e9"/><rect y="4.6" width="22" height=".5" fill="#ce1126"/><rect y="5.1" width="22" height="4.8" fill="#fff"/><rect y="9.9" width="22" height=".5" fill="#ce1126"/><rect y="10.4" width="22" height="4.6" fill="#1eb53a"/><circle cx="4" cy="2.3" r="1.5" fill="#fff"/><circle cx="4.6" cy="2.3" r="1.35" fill="#1eb4e9"/></svg>',
+  tg:'<svg viewBox="0 0 22 15"><rect width="22" height="4.3" fill="#cc0000"/><rect y="4.3" width="22" height="6.4" fill="#fff"/><rect y="10.7" width="22" height="4.3" fill="#006600"/><ellipse cx="11" cy="7.5" rx="2" ry="1.3" fill="#f8c300"/></svg>'};
+const ttl=(m,s)=>tr(MODEINFO[m][0]+' '+INFO[s].gen);
+const MODES = {
+  xray:{name:'Цифровой рентген',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 7v10M8 9c2 .8 6 .8 8 0M8 13c2 .8 6 .8 8 0"/></svg>',desc:'Быстрый первичный скрининг',studies:['lungs','abdomen','gi','bones','rjoints','rspine','skull']},
+  ct:{name:'КТ',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>',desc:'Послойное изображение, высокая детализация',studies:['chest','ctbrain','neck','spine','abdomen','ctkidney','ctpelvis','vessels','bones','joints','limbs']},
+  mri:{name:'МРТ',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 4a4 4 0 0 0-4 4 3 3 0 0 0-1 5 4 4 0 0 0 5 5V4zM15 4a4 4 0 0 1 4 4 3 3 0 0 1 1 5 4 4 0 0 1-5 5V4z"/></svg>',desc:'Мягкие ткани, мозг, суставы и сосуды',studies:['head','mpit','morbit','msinus','spine','abdomen','mretro','pelvis','vessels','joints','softtissue','chest']}
+};
+const STUDIES = {
+  lungs:{name:'Легкие',
+    findings:[
+      {n:'Пневмония (очаговое затемнение)',p:.62,s:'bad',at:[.34,.42,.13]},
+      {n:'Плевральный выпот',p:.21,s:'warn',at:[.7,.72,.1]},
+      {n:'Узловое образование',p:.12,s:'warn',at:[.64,.3,.07]},
+      {n:'Пневмоторакс',p:.04,s:'ok',at:null}],
+    concl:'Выявлена зона повышенной плотности в нижней доле левого лёгкого, вероятно воспалительного характера. Остальные отделы без выраженных изменений.',
+    recs:['Консультация пульмонолога или терапевта','Общий анализ крови, СРБ','Контрольный снимок через 10–14 дней']},
+  abdomen:{name:'Органы брюшной полости',
+    findings:[
+      {n:'Признаки кишечной непроходимости',p:.33,s:'warn',at:[.5,.5,.16]},
+      {n:'Свободный газ (под диафрагмой)',p:.14,s:'warn',at:[.5,.18,.1]},
+      {n:'Конкременты (камни)',p:.27,s:'warn',at:[.3,.62,.07]},
+      {n:'Свободная жидкость',p:.09,s:'ok',at:null}],
+    concl:'Обнаружены единичные уровни жидкости и газа в петлях кишечника, не исключается функциональное нарушение моторики. Требуется клиническая оценка.',
+    recs:['Осмотр хирурга или гастроэнтеролога','УЗИ органов брюшной полости','При боли и рвоте — срочное обращение']},
+  bones:{name:'Кости',
+    findings:[
+      {n:'Перелом (линия излома)',p:.74,s:'bad',at:[.5,.5,.1]},
+      {n:'Смещение отломков',p:.38,s:'warn',at:[.5,.54,.14]},
+      {n:'Остеопороз (снижение плотности)',p:.18,s:'ok',at:null},
+      {n:'Костное образование',p:.05,s:'ok',at:null}],
+    concl:'В средней трети кости прослеживается линия просветления, характерная для перелома без выраженного смещения. Рекомендована иммобилизация.',
+    recs:['Срочная консультация травматолога','Иммобилизация конечности','Контрольный снимок после наложения гипса']},
+  gi:{name:'Пищеварительный тракт (с контрастом)',
+    findings:[
+      {n:'Язвенная ниша',p:.46,s:'warn',at:[.58,.5,.07]},
+      {n:'Сужение просвета (стеноз)',p:.31,s:'warn',at:[.5,.63,.08]},
+      {n:'Дивертикул',p:.18,s:'ok',at:[.52,.2,.05]},
+      {n:'Дефект наполнения (полип, опухоль)',p:.09,s:'ok',at:null}],
+    concl:'На малой кривизне желудка определяется стойкое контрастное депо, вероятно язвенная ниша. Просвет выходного отдела умеренно сужен. Рекомендуется эндоскопическое исследование.',
+    recs:['Консультация гастроэнтеролога','ЭГДС (гастроскопия) с биопсией','Анализ на Helicobacter pylori']},
+  rjoints:{name:'Суставы',draw:'joints',
+    findings:[
+      {n:'Сужение суставной щели',p:.55,s:'bad',at:[.5,.5,.12]},
+      {n:'Остеофиты (костные разрастания)',p:.44,s:'warn',at:[.41,.5,.06]},
+      {n:'Субхондральный склероз',p:.3,s:'warn',at:[.6,.52,.07]},
+      {n:'Вывих или подвывих',p:.06,s:'ok',at:null}],
+    concl:'Суставная щель неравномерно сужена, по краям суставных поверхностей определяются костные заострения, под хрящом отмечено уплотнение кости. Картина соответствует артрозу.',
+    recs:['Консультация ортопеда или ревматолога','Снижение нагрузки на сустав','При необходимости — МРТ сустава']},
+  rspine:{name:'Позвоночник',draw:'spine',
+    findings:[
+      {n:'Снижение высоты межпозвонковых дисков (остеохондроз)',p:.52,s:'bad',at:[.46,.58,.07]},
+      {n:'Остеофиты тел позвонков (спондилёз)',p:.4,s:'warn',at:[.58,.46,.06]},
+      {n:'Нарушение оси позвоночника (сколиоз, листез)',p:.27,s:'warn',at:[.44,.7,.08]},
+      {n:'Компрессионный перелом позвонка',p:.07,s:'ok',at:null}],
+    concl:'На уровне нижнепоясничных сегментов снижена высота межпозвонковых промежутков, по краям тел позвонков определяются костные разрастания. Выраженной деформации оси нет.',
+    recs:['Консультация невролога или вертебролога','При болях и онемении — МРТ позвоночника','ЛФК и подбор терапии']},
+  ctbrain:{name:'Головной мозг',draw:'head',
+    findings:[
+      {n:'Внутричерепное кровоизлияние (гематома)',p:.44,s:'warn',at:[.6,.38,.1]},
+      {n:'Зона ишемии (инсульт)',p:.31,s:'warn',at:[.38,.5,.1]},
+      {n:'Объёмное образование',p:.22,s:'warn',at:[.55,.34,.08]},
+      {n:'Расширение желудочков',p:.12,s:'ok',at:[.5,.45,.08]}],
+    concl:'В правой височно-теменной области определяется участок повышенной плотности, вероятно кровоизлияние, с небольшим перифокальным отёком. Срединные структуры не смещены. Рекомендуется срочная консультация.',
+    recs:['Срочная консультация невролога или нейрохирурга','КТ с контрастным усилением или МРТ для уточнения','Срочно — при нарушении речи, слабости в конечностях, потере сознания']},
+  ctkidney:{name:'Почки и забрюшинное пространство',draw:'abdomen',
+    findings:[
+      {n:'Конкременты (камни) почек',p:.48,s:'warn',at:[.3,.62,.07]},
+      {n:'Расширение чашечно-лоханочной системы',p:.33,s:'warn',at:[.3,.6,.1]},
+      {n:'Образование почки',p:.2,s:'warn',at:[.7,.62,.08]},
+      {n:'Увеличение забрюшинных лимфоузлов',p:.08,s:'ok',at:null}],
+    concl:'В проекции чашечно-лоханочной системы определяется плотная тень конкремента с умеренным расширением лоханки выше препятствия. Забрюшинное пространство без выраженных изменений.',
+    recs:['Консультация уролога','Общий анализ мочи и анализ крови на креатинин','Срочно — при сильной боли, температуре, отсутствии мочи']},
+  mpit:{name:'Гипофиз',draw:'head',
+    findings:[
+      {n:'Микроаденома гипофиза',p:.42,s:'warn',at:[.5,.6,.05]},
+      {n:'Увеличение размеров гипофиза',p:.25,s:'warn',at:[.5,.6,.08]},
+      {n:'«Пустое» турецкое седло',p:.12,s:'ok',at:null},
+      {n:'Смещение или утолщение ножки гипофиза',p:.09,s:'ok',at:null}],
+    concl:'В передней доле гипофиза определяется небольшой участок сниженного сигнала, вероятно микроаденома. Ножка гипофиза не смещена, зрительный перекрёст не деформирован. Рекомендуется консультация эндокринолога.',
+    recs:['Консультация эндокринолога','Анализ крови на гормоны (пролактин, ТТГ, АКТГ)','МРТ гипофиза с контрастированием в динамике']},
+  morbit:{name:'Орбиты',draw:'head',
+    findings:[
+      {n:'Объёмное образование орбиты',p:.3,s:'warn',at:[.34,.3,.06]},
+      {n:'Утолщение зрительного нерва',p:.27,s:'warn',at:[.4,.34,.05]},
+      {n:'Воспалительная инфильтрация клетчатки орбиты',p:.19,s:'ok',at:null},
+      {n:'Утолщение глазодвигательных мышц',p:.15,s:'ok',at:null}],
+    concl:'В ретробульбарной клетчатке определяется небольшое образование с чёткими контурами, зрительный нерв слегка оттеснён. Глазные яблоки обычной формы. Рекомендуется консультация офтальмолога.',
+    recs:['Консультация офтальмолога','МРТ орбит с контрастированием','Проверка остроты и полей зрения']},
+  msinus:{name:'Придаточные пазухи носа',draw:'head',
+    findings:[
+      {n:'Синусит (утолщение слизистой, жидкость)',p:.56,s:'bad',at:[.5,.25,.09]},
+      {n:'Киста пазухи',p:.27,s:'warn',at:[.4,.28,.05]},
+      {n:'Искривление носовой перегородки',p:.21,s:'warn',at:[.5,.3,.06]},
+      {n:'Полипозные изменения слизистой',p:.12,s:'ok',at:null}],
+    concl:'Слизистая верхнечелюстных пазух утолщена, в просвете определяется жидкость. В одной из пазух видна небольшая киста. Носовая перегородка слегка искривлена.',
+    recs:['Консультация ЛОР-врача','Лечение по назначению врача, контроль через 2–3 недели','Срочно — при высокой температуре и сильной боли в области лица']},
+  mretro:{name:'Забрюшинное пространство',draw:'abdomen',
+    findings:[
+      {n:'Увеличение забрюшинных лимфоузлов',p:.36,s:'warn',at:[.5,.5,.1]},
+      {n:'Образование надпочечника',p:.22,s:'warn',at:[.32,.42,.06]},
+      {n:'Образование почки',p:.2,s:'warn',at:[.7,.62,.08]},
+      {n:'Забрюшинная гематома или жидкость',p:.09,s:'ok',at:null}],
+    concl:'Вдоль аорты определяются увеличенные лимфатические узлы. В области надпочечника есть небольшое округлое образование. Требуется очная консультация и уточнение характера изменений.',
+    recs:['Консультация онколога или уролога','МРТ с контрастированием для уточнения','Анализ крови на онкомаркеры по назначению врача']},
+  skull:{name:'Голова (череп)',
+    findings:[
+      {n:'Перелом костей свода черепа (линия излома)',p:.58,s:'bad',at:[.65,.2,.09]},
+      {n:'Утолщение слизистой пазух, уровень жидкости',p:.27,s:'warn',at:[.3,.62,.07]},
+      {n:'Изменение формы турецкого седла',p:.14,s:'ok',at:[.42,.52,.05]},
+      {n:'Инородное тело',p:.05,s:'ok',at:null}],
+    concl:'В верхнебоковой области свода определяется линейная зона просветления, характерная для перелома без вдавления. Пазухи носа воздушны, возможно утолщение слизистой. Остальные структуры без выраженных изменений.',
+    recs:['Срочная консультация травматолога или нейрохирурга','КТ головного мозга для исключения внутричерепной гематомы','Срочно — при рвоте, потере сознания, нарастающей головной боли']},
+  head:{name:'Голова',
+    findings:[
+      {n:'Объёмное образование',p:.41,s:'warn',at:[.6,.38,.12]},
+      {n:'Признаки ишемии',p:.23,s:'warn',at:[.38,.5,.1]},
+      {n:'Расширение желудочков',p:.16,s:'ok',at:[.5,.45,.08]},
+      {n:'Кровоизлияние',p:.06,s:'ok',at:null}],
+    concl:'В правой височно-теменной области определяется участок изменённого МР-сигнала. Требуется очная консультация и уточняющее исследование с контрастом.',
+    recs:['Консультация невролога','МРТ с контрастированием','Срочно — при головной боли, нарушении речи, зрения']},
+  chest:{name:'Грудная клетка',draw:'lungs',
+    findings:[
+      {n:'Очаговое уплотнение лёгочной ткани',p:.58,s:'bad',at:[.34,.42,.13]},
+      {n:'Плевральный выпот',p:.21,s:'warn',at:[.7,.72,.1]},
+      {n:'Узловое образование',p:.17,s:'warn',at:[.64,.3,.07]},
+      {n:'Увеличение лимфоузлов средостения',p:.09,s:'ok',at:null}],
+    concl:'В нижней доле лёгкого определяется участок уплотнения, вероятно воспалительной природы. Небольшое количество жидкости в плевральной полости. Рекомендован контроль динамики.',
+    recs:['Консультация пульмонолога','Контрольная КТ через 2–3 недели','Уточнить характер узла при повторном исследовании']},
+  spine:{name:'Позвоночник',
+    findings:[
+      {n:'Грыжа межпозвонкового диска',p:.64,s:'bad',at:[.54,.72,.07]},
+      {n:'Стеноз позвоночного канала',p:.31,s:'warn',at:[.55,.7,.09]},
+      {n:'Дегенерация диска (снижение высоты)',p:.45,s:'warn',at:[.47,.58,.06]},
+      {n:'Компрессионный перелом позвонка',p:.07,s:'ok',at:null}],
+    concl:'На нижнепоясничном уровне определяется выпячивание диска в позвоночный канал с умеренным сужением. Выше — признаки дегенеративных изменений диска.',
+    recs:['Консультация невролога или вертебролога','ЛФК и подбор терапии','Срочно — при онемении ног и нарушении мочеиспускания']},
+  neck:{name:'Голова и шея',draw:'head',
+    findings:[
+      {n:'Объёмное образование',p:.36,s:'warn',at:[.6,.38,.12]},
+      {n:'Признаки ишемии',p:.22,s:'warn',at:[.38,.5,.1]},
+      {n:'Воспаление придаточных пазух',p:.14,s:'ok',at:null},
+      {n:'Внутричерепное кровоизлияние',p:.06,s:'ok',at:null}],
+    concl:'В правой височно-теменной области определяется участок изменённой плотности. Структуры шеи без выраженных изменений. Рекомендуется уточнение контрастным исследованием.',
+    recs:['Консультация невролога','КТ или МРТ с контрастом','Срочно — при сильной головной боли и нарушении речи']},
+  vessels:{name:'Сосуды',
+    findings:[
+      {n:'Аневризма (расширение просвета)',p:.46,s:'warn',at:[.5,.6,.09]},
+      {n:'Стеноз (сужение просвета)',p:.38,s:'warn',at:[.5,.4,.06]},
+      {n:'Кальцинированные бляшки',p:.29,s:'warn',at:[.44,.74,.07]},
+      {n:'Тромбоз',p:.11,s:'ok',at:null}],
+    concl:'В брюшном отделе аорты определяется расширение просвета. Выявлены участки сужения и единичные кальцинированные бляшки подвздошных артерий.',
+    recs:['Консультация сосудистого хирурга','Контроль артериального давления','Контрольное исследование через 3–6 месяцев']},
+  joints:{name:'Суставы',
+    findings:[
+      {n:'Сужение суставной щели',p:.52,s:'bad',at:[.5,.5,.12]},
+      {n:'Остеофиты (костные разрастания)',p:.41,s:'warn',at:[.41,.5,.06]},
+      {n:'Выпот в полости сустава',p:.33,s:'warn',at:[.34,.4,.08]},
+      {n:'Повреждение мениска',p:.19,s:'ok',at:null}],
+    concl:'Суставная щель неравномерно сужена, по краям — костные разрастания, в полости сустава немного жидкости. Картина соответствует начальному артрозу.',
+    recs:['Консультация ортопеда или ревматолога','Снижение нагрузки на сустав','Контрольный осмотр через 3 месяца']},
+  limbs:{name:'Конечности',draw:'bones',
+    findings:[
+      {n:'Перелом (линия излома)',p:.72,s:'bad',at:[.55,.5,.1]},
+      {n:'Смещение отломков',p:.36,s:'warn',at:[.57,.54,.12]},
+      {n:'Гематома мягких тканей',p:.28,s:'warn',at:[.55,.56,.12]},
+      {n:'Остеопороз',p:.15,s:'ok',at:null}],
+    concl:'В средней трети одной из костей предплечья прослеживается линия перелома с небольшим смещением отломков. Вокруг — признаки отёка мягких тканей.',
+    recs:['Срочная консультация травматолога','Иммобилизация конечности','Контрольный снимок после репозиции']},
+  pelvis:{name:'Органы малого таза',
+    findings:[
+      {n:'Киста (кистозное образование)',p:.39,s:'warn',at:[.38,.52,.07]},
+      {n:'Узел (миома, фиброма)',p:.27,s:'warn',at:[.545,.56,.06]},
+      {n:'Свободная жидкость',p:.15,s:'ok',at:null},
+      {n:'Увеличение лимфоузлов',p:.08,s:'ok',at:null}],
+    concl:'Слева от центра определяется кистозное образование с чёткими контурами. В стенке матки виден небольшой узел. Выраженных воспалительных изменений нет.',
+    recs:['Консультация гинеколога или уролога','УЗИ малого таза в динамике','Анализ на онкомаркеры по назначению врача']},
+  softtissue:{name:'Мягкие ткани',
+    findings:[
+      {n:'Образование мягких тканей',p:.43,s:'warn',at:[.62,.4,.1]},
+      {n:'Отёк (воспалительные изменения)',p:.28,s:'warn',at:[.4,.58,.11]},
+      {n:'Разрыв мышечных волокон',p:.19,s:'ok',at:[.45,.35,.06]},
+      {n:'Киста',p:.1,s:'ok',at:null}],
+    concl:'В толще мышц определяется образование с чёткими границами, рядом — зона отёка. Требуется уточнение характера образования.',
+    recs:['Консультация хирурга или онколога','МРТ с контрастированием','Биопсия по решению врача']}
+};
+
+STUDIES.ctpelvis={...STUDIES.pelvis,draw:'pelvis'};
+const MODEINFO={
+  xray:['Рентген','Быстрый снимок рентгеновскими лучами: занимает секунды, доза излучения небольшая.'],
+  ct:['КТ','Послойные срезы рентгеновскими лучами: 5–15 минут, детально видны кости и органы.'],
+  mri:['МРТ','Магнитное поле и радиоволны, без излучения: 20–40 минут, лучше всего видны мягкие ткани.']};
+const INFO={
+  lungs:{gen:'лёгких',incl:['Флюорография органов грудной клетки (после 15 лет)','Рентгенография органов грудной клетки'],what:'Снимок грудной клетки: показывает лёгкие, сердце, диафрагму и рёбра.',when:['Кашель, температура, одышка','Подозрение на пневмонию или туберкулёз','Профилактический осмотр'],looks:['Затемнения и очаги','Жидкость в плевре','Узлы и образования','Пневмоторакс']},
+  abdomen:{gen:'органов брюшной полости',incl:{xray:['Обзорная рентгенография брюшной полости (стоя, лёжа)','Обзорная урография'],ct:['РКТ органов брюшной полости','РКТ органов брюшной полости с контрастным усилением']},what:'Изображение печени, почек, кишечника и других органов брюшной полости.',when:['Боль в животе','Подозрение на непроходимость или камни','Травма живота'],looks:['Газ и уровни жидкости в кишечнике','Камни','Свободная жидкость и газ','Изменение размеров органов']},
+  bones:{gen:'костей',incl:{xray:['Рентгенография костей конечностей','Рентгенография кистей','Рентгенография стоп','Рентгенография стоп с нагрузкой','Рентгенография костей таза','Рентгенография лопатки','Рентгенография ключицы','Рентгенография рёбер','Рентгенография грудины'],ct:['РКТ костей и суставов']},what:'Снимок костей: показывает целостность, форму и плотность костной ткани.',when:['Травма, подозрение на перелом','Боль в кости','Контроль после гипса'],looks:['Линия перелома','Смещение отломков','Остеопороз','Костные образования']},
+  gi:{gen:'пищеварительного тракта',incl:['Рентгеноскопия и рентгенография пищевода, желудка и 12-перстной кишки','Рентгеноскопия и рентгенография кишечника путём пассажа','Ирригоскопия'],what:'Исследование с рентгеноконтрастной взвесью (бариевая смесь): видны форма, контуры и проходимость пищевода, желудка и кишки.',when:['Боль в верхней части живота, изжога','Подозрение на язву или опухоль','Нарушение глотания и прохождения пищи'],looks:['Язвенные ниши','Сужения просвета','Дивертикулы','Дефекты наполнения']},
+  rjoints:{gen:'суставов',incl:['Рентгенография плечевого сустава','Рентгенография локтевого сустава','Рентгенография лучезапястного сустава','Рентгенография тазобедренного сустава','Рентгенография коленного сустава','Рентгенография голеностопного сустава'],what:'Снимок сустава в двух проекциях: суставные поверхности, ширина суставной щели, края костей.',when:['Боль и ограничение движений в суставе','Травмы, подозрение на вывих','Контроль артроза и после лечения'],looks:['Сужение суставной щели','Остеофиты','Склероз под хрящом','Вывихи и подвывихи']},
+  rspine:{gen:'позвоночника',incl:['Рентгенография шейного отдела позвоночника','Рентгенография грудного отдела позвоночника','Рентгенография поясничного отдела позвоночника','Рентгенография пояснично-крестцового отдела позвоночника','Шейный отдел с функциональными пробами','Поясничный отдел с функциональными пробами'],what:'Снимок позвоночника в прямой и боковой проекциях, при необходимости с функциональными пробами (наклоны вперёд и назад).',when:['Боль в шее и спине','Травмы позвоночника','Осмотр при искривлении осанки'],looks:['Снижение высоты дисков','Остеофиты','Искривление и смещение позвонков','Переломы позвонков']},
+  mpit:{gen:'гипофиза',incl:['МРТ гипофиза','МРТ гипофиза с контрастным усилением'],what:'Подробное изображение гипофиза и турецкого седла, зрительного перекрёста и пещеристых синусов.',when:['Нарушения менструального цикла, бесплодие','Головные боли и ухудшение зрения','Повышенный пролактин или другие гормоны'],looks:['Микроаденомы','Увеличение гипофиза','«Пустое» седло','Состояние ножки гипофиза']},
+  morbit:{gen:'орбит',incl:['МРТ орбит'],what:'Глазные яблоки, зрительные нервы, глазодвигательные мышцы и клетчатка глазницы.',when:['Выпячивание или боль в глазу','Снижение или двоение зрения','Подозрение на опухоль или воспаление'],looks:['Образования орбиты','Утолщение зрительного нерва','Воспаление клетчатки','Утолщение мышц']},
+  msinus:{gen:'придаточных пазух носа',incl:['МРТ придаточных пазух носа'],what:'Верхнечелюстные, лобные, решётчатые и клиновидная пазухи: слизистая, жидкость, кисты и полипы.',when:['Затруднение носового дыхания','Частые гаймориты и головная боль','Подозрение на кисту или опухоль'],looks:['Синусит','Кисты','Полипы','Искривление перегородки']},
+  mretro:{gen:'забрюшинного пространства',incl:['МРТ органов забрюшинного пространства','МРТ органов забрюшинного пространства с контрастным усилением'],what:'Надпочечники, почки, аорта, нижняя полая вена, лимфоузлы и клетчатка позади брюшины.',when:['Боль в пояснице без ясной причины','Подозрение на образование надпочечника или почки','Увеличение лимфоузлов'],looks:['Лимфоузлы','Образования надпочечников','Образования почек','Жидкость и гематомы']},
+  ctbrain:{gen:'головного мозга',incl:['Рентгеновская компьютерная томография (РКТ) головного мозга','РКТ головного мозга с контрастным усилением'],what:'Срезы головного мозга: вещество мозга, желудочки, оболочки и кости черепа. Быстро выявляет кровоизлияния.',when:['Травма головы','Подозрение на инсульт','Внезапная сильная головная боль'],looks:['Кровоизлияния','Зоны ишемии','Объёмные образования','Расширение желудочков']},
+  ctkidney:{gen:'почек и забрюшинного пространства',incl:['РКТ почек и забрюшинного пространства','РКТ почек и забрюшинного пространства с контрастным усилением'],what:'Срезы почек, мочеточников, надпочечников и клетчатки позади брюшины.',when:['Боль в пояснице, почечная колика','Подозрение на камни или опухоль почки','Уточнение после УЗИ'],looks:['Камни почек','Расширение чашечно-лоханочной системы','Образования почки','Увеличенные лимфоузлы']},
+  skull:{gen:'головы (черепа)',incl:['Рентгенография черепа','Рентгенография турецкого седла','Рентгенография околоносовых пазух','Рентгенография костей носа','Рентгенография височных костей','Рентгенография височно-нижнечелюстного сустава','Рентгенография нижней челюсти','Рентгенография скуловой кости','Рентгенография орбит'],what:'Снимок черепа в прямой и боковой проекциях: кости свода и основания, лицевой скелет, придаточные пазухи.',when:['Травма головы, подозрение на перелом','Боль в области пазух носа','Контроль после травм и операций'],looks:['Переломы костей черепа','Затемнение пазух','Изменения турецкого седла','Инородные тела']},
+  head:{gen:'головы',what:'Подробное изображение головного мозга, желудочков и оболочек.',when:['Головные боли и головокружения','Подозрение на инсульт или опухоль','Травмы, эпилепсия'],looks:['Образования','Очаги ишемии','Расширение желудочков','Кровоизлияния']},
+  chest:{gen:'грудной клетки',what:'Срезы грудной клетки: лёгкие, сердце, сосуды, лимфоузлы и рёбра.',when:['Уточнение после рентгена','Подозрение на пневмонию или опухоль','Контроль после лечения'],looks:['Очаги и узлы в лёгких','Выпот в плевре','Лимфоузлы средостения','Состояние сосудов']},
+  spine:{gen:'позвоночника',what:'Позвонки, межпозвонковые диски, спинной мозг и нервные корешки.',when:['Боль в спине и шее','Онемение рук и ног','Подозрение на грыжу или травму'],looks:['Грыжи дисков','Стеноз позвоночного канала','Дегенерация дисков','Переломы позвонков']},
+  neck:{gen:'головы и шеи',what:'Срезы головы и шеи: кости черепа, мозг, пазухи носа и сосуды шеи.',when:['Травма головы','Сильная головная боль','Заболевания пазух и щитовидной железы'],looks:['Образования','Ишемия и кровоизлияния','Воспаление пазух','Переломы костей черепа']},
+  vessels:{gen:'сосудов',what:'Артерии и вены, обычно с контрастом: видны просвет, стенки и кровоток.',when:['Боли и слабость в ногах','Подозрение на аневризму или тромбоз','Подготовка к операции'],looks:['Аневризмы','Сужения просвета','Бляшки и кальциноз','Тромбы']},
+  joints:{gen:'суставов',what:'Кость, хрящ, связки, мениски и жидкость в суставе.',when:['Боль и хруст в суставе','Ограничение движений','Спортивные травмы'],looks:['Сужение суставной щели','Остеофиты','Выпот в суставе','Повреждение мениска']},
+  limbs:{gen:'конечностей',what:'Кости и мягкие ткани рук и ног, в том числе при сложных переломах.',when:['Травмы конечностей','Сложные переломы','Планирование операции'],looks:['Перелом и смещение','Гематомы','Остеопороз','Повреждение сухожилий']},
+  pelvis:{gen:'органов малого таза',what:'Матка, яичники, предстательная железа, мочевой пузырь и окружающие ткани.',when:['Боль внизу живота','Подозрение на кисты и миомы','Уточнение после УЗИ'],looks:['Кисты','Узлы и миомы','Свободная жидкость','Лимфоузлы']},
+  softtissue:{gen:'мягких тканей',what:'Мышцы, жировая клетчатка, сухожилия и образования в них.',when:['Уплотнение или опухоль','Травмы мышц','Воспаление'],looks:['Образования','Отёк','Разрывы волокон','Кисты']}};
+/* exams from the clinical list that belong to each CT area (shown in "Об исследовании"); per mode where a study key is shared */
+INFO.chest.incl={ct:['РКТ органов грудной клетки','РКТ органов грудной клетки с контрастным усилением','РКТ органов средостения','РКТ органов средостения с контрастным усилением']};
+INFO.neck.incl=['РКТ ЛОР органов','РКТ ЛОР органов с контрастным усилением','РКТ органов шеи','РКТ органов шеи с контрастным усилением'];
+INFO.spine.incl={ct:['РКТ шейного отдела позвоночника','РКТ грудного отдела позвоночника','РКТ пояснично-крестцового отдела позвоночника']};
+INFO.vessels.incl={ct:['КТ-ангиография']};
+INFO.joints.incl={ct:['РКТ костей и суставов']};
+INFO.ctpelvis={...INFO.pelvis,incl:['РКТ органов малого таза','РКТ органов малого таза с контрастным усилением']};
+INFO.head.incl={mri:['МРТ головного мозга','МРТ головного мозга с контрастным усилением']};
+INFO.spine.incl.mri=['МРТ шейного отдела позвоночника','МРТ грудного отдела позвоночника','МРТ пояснично-крестцового отдела позвоночника','МРТ позвоночника и спинного мозга с контрастным усилением'];
+INFO.abdomen.incl.mri=['МРТ органов брюшной полости','МРТ органов брюшной полости с контрастным усилением'];
+INFO.pelvis.incl={mri:['МРТ органов малого таза','МРТ органов малого таза с контрастным усилением']};
+INFO.joints.incl.mri=['МРТ костей и суставов'];
+INFO.vessels.incl.mri=['МР-ангиография'];
+/* protocol templates: [section, norm text, abnormal text, finding index]; "__" = value for the doctor to fill in */
+const PROTO={
+  lungs:[['ЛЁГОЧНАЯ ТКАНЬ','Лёгочные поля прозрачны, очаговых и инфильтративных теней не выявлено.','Определяется участок затемнения неоднородной структуры размерами __ × __ мм.',0],['ПЛЕВРА','Синусы свободны, плевральных наложений нет.','Определяется жидкость в плевральной полости, уровень до __ ребра.',1],['ОБРАЗОВАНИЯ','Узловых образований не выявлено.','Определяется узел диаметром __ мм с чёткими контурами.',2],['СРЕДОСТЕНИЕ И СЕРДЦЕ','Тень средостения не расширена, контуры сердца не изменены.'],['КОСТНЫЕ СТРУКТУРЫ','Видимые рёбра, ключицы и позвонки без деструкции.']],
+  chest:[['ЛЁГОЧНАЯ ПАРЕНХИМА','Очаговых и инфильтративных изменений не выявлено.','Определяется зона уплотнения паренхимы размерами __ × __ мм.',0],['ПЛЕВРА','Плевральные полости свободны.','Определяется жидкость в плевральной полости, толщина слоя __ мм.',1],['УЗЛОВЫЕ ОБРАЗОВАНИЯ','Узлов не выявлено.','Определяется узел диаметром __ мм.',2],['ЛИМФОУЗЛЫ СРЕДОСТЕНИЯ','Внутригрудные лимфоузлы не увеличены.','Определяются увеличенные лимфоузлы до __ мм.',3],['СЕРДЦЕ И СОСУДЫ','Размеры сердца в норме, крупные сосуды без особенностей.'],['КОСТНЫЕ СТРУКТУРЫ','Рёбра, грудина и позвонки без деструкции.']],
+  abdomen:[['КИШЕЧНИК','Газонаполнение равномерное, уровней жидкости нет.','Определяются расширенные петли кишечника с уровнями жидкости.',0],['СВОБОДНЫЙ ГАЗ','Свободного газа под диафрагмой нет.','Под куполом диафрагмы определяется полоска свободного газа.',1],['КОНКРЕМЕНТЫ','Рентгеноконтрастных теней не выявлено.','В проекции мочевых путей определяется тень диаметром __ мм.',2],['СВОБОДНАЯ ЖИДКОСТЬ','Свободной жидкости не выявлено.','Определяется свободная жидкость в малом количестве.',3],['ПАРЕНХИМАТОЗНЫЕ ОРГАНЫ','Печень, селезёнка и почки обычных размеров, структура однородная.'],['КОСТНЫЕ СТРУКТУРЫ','Позвонки и кости таза без изменений.']],
+  bones:[['КОСТНЫЕ СТРУКТУРЫ','Целостность кортикального слоя не нарушена, линий перелома нет.','Определяется линия перелома на уровне средней трети кости.',0],['ПОЛОЖЕНИЕ ОТЛОМКОВ','Смещения нет.','Отломки смещены по ширине на __ мм.',1],['ПЛОТНОСТЬ КОСТИ','Структура костной ткани не изменена.','Определяется диффузное снижение плотности костной ткани.',2],['ОБРАЗОВАНИЯ','Костных образований не выявлено.','Определяется очаг деструкции размерами __ × __ мм.',3],['МЯГКИЕ ТКАНИ','Мягкие ткани без особенностей.']],
+  mpit:[['ГИПОФИЗ','Размеры и форма гипофиза в норме, сигнал однородный.','Определяется участок изменённого сигнала в аденогипофизе размерами __ × __ мм.',0],['РАЗМЕРЫ ЖЕЛЕЗЫ','Высота гипофиза в пределах нормы.','Высота гипофиза увеличена до __ мм.',1],['ТУРЕЦКОЕ СЕДЛО','Размеры и форма седла не изменены.','Турецкое седло «пустое», заполнено ликвором.',2],['НОЖКА ГИПОФИЗА','Ножка расположена по средней линии, не утолщена.','Ножка гипофиза смещена или утолщена.',3],['ЗРИТЕЛЬНЫЙ ПЕРЕКРЁСТ','Хиазма не деформирована, не оттеснена.'],['КАВЕРНОЗНЫЕ СИНУСЫ','Не изменены, внутренние сонные артерии обычного калибра.']],
+  morbit:[['ГЛАЗНЫЕ ЯБЛОКИ','Форма и размеры не изменены, содержимое однородное.'],['ОБРАЗОВАНИЯ ОРБИТЫ','Объёмных образований в орбитах не выявлено.','Определяется образование размерами __ × __ мм.',0],['ЗРИТЕЛЬНЫЙ НЕРВ','Не утолщён, контуры ровные.','Зрительный нерв утолщён до __ мм.',1],['ОРБИТАЛЬНАЯ КЛЕТЧАТКА','Структура клетчатки не изменена.','Определяется диффузная инфильтрация клетчатки орбиты.',2],['ГЛАЗОДВИГАТЕЛЬНЫЕ МЫШЦЫ','Не утолщены.','Определяется утолщение глазодвигательных мышц.',3],['КОСТНЫЕ СТЕНКИ ОРБИТ','Без признаков деструкции.']],
+  msinus:[['ВЕРХНЕЧЕЛЮСТНЫЕ ПАЗУХИ','Пневматизация сохранена, слизистая не утолщена.','Слизистая утолщена, в просвете определяется жидкость.',0],['КИСТЫ','Кистозных образований не выявлено.','Определяется кистозное образование диаметром __ мм.',1],['НОСОВАЯ ПЕРЕГОРОДКА','Расположена по средней линии.','Носовая перегородка искривлена.',2],['ПОЛИПЫ','Полипозных изменений слизистой нет.','Определяются полипозные изменения слизистой.',3],['ЛОБНЫЕ И РЕШЁТЧАТЫЕ ПАЗУХИ','Воздушны, соустья проходимы.'],['КЛИНОВИДНАЯ ПАЗУХА','Пневматизация сохранена.']],
+  mretro:[['ЗАБРЮШИННЫЕ ЛИМФОУЗЛЫ','Не увеличены, обычной структуры.','Определяются увеличенные лимфоузлы до __ мм.',0],['НАДПОЧЕЧНИКИ','Обычной формы и размеров, структура однородная.','Определяется округлое образование надпочечника диаметром __ мм.',1],['ПОЧКИ','Обычных размеров, контуры ровные, паренхима однородная.','Определяется образование почки размерами __ × __ мм.',2],['ЖИДКОСТЬ И ГЕМАТОМЫ','Свободной жидкости нет.','Определяется скопление жидкости в забрюшинной клетчатке.',3],['АОРТА И НИЖНЯЯ ПОЛАЯ ВЕНА','Обычного калибра, без особенностей.'],['ПАРАРЕНАЛЬНАЯ КЛЕТЧАТКА','Структура не изменена.']],
+  ctbrain:[['ВЕЩЕСТВО МОЗГА','Дифференцировка серого и белого вещества сохранена, очаговых изменений плотности не выявлено.','Определяется зона пониженной плотности (вероятно ишемия) размерами __ × __ мм.',1],['ВНУТРИЧЕРЕПНЫЕ КРОВОИЗЛИЯНИЯ','Зон спонтанно повышенной плотности нет.','Определяется зона повышенной плотности размерами __ × __ мм, вероятно кровоизлияние.',0],['ОБЪЁМНЫЕ ОБРАЗОВАНИЯ','Объёмных образований не выявлено.','Определяется образование размерами __ × __ мм с перифокальным отёком.',2],['ЖЕЛУДОЧКОВАЯ СИСТЕМА','Желудочки обычной формы и размеров, срединные структуры не смещены.','Желудочки расширены, срединные структуры смещены на __ мм.',3],['ЦИСТЕРНЫ И БОРОЗДЫ','Субарахноидальные пространства не расширены.'],['КОСТНЫЕ СТРУКТУРЫ','Кости свода и основания черепа без травматических изменений. Околоносовые пазухи воздушны.']],
+  ctkidney:[['ПОЧКИ','Почки расположены обычно, не увеличены, контуры ровные, паренхима однородной плотности.','Определяется образование паренхимы почки размерами __ × __ мм.',2],['КОНКРЕМЕНТЫ','Рентгеноплотных конкрементов в почках и мочеточниках не выявлено.','В проекции чашечно-лоханочной системы определяется конкремент диаметром __ мм.',0],['ЧАШЕЧНО-ЛОХАНОЧНАЯ СИСТЕМА','Не расширена, мочеточники не расширены.','Чашечно-лоханочная система расширена, размер лоханки __ мм.',1],['ЗАБРЮШИННЫЕ ЛИМФОУЗЛЫ','Не увеличены.','Определяются увеличенные забрюшинные лимфоузлы до __ мм.',3],['НАДПОЧЕЧНИКИ','Обычной формы и размеров, без очаговых изменений.'],['ПАРАРЕНАЛЬНАЯ КЛЕТЧАТКА','Структура не изменена, свободной жидкости нет.']],
+  gi:[['ПИЩЕВОД','Проходим, контуры ровные, перистальтика сохранена.'],['ЖЕЛУДОК','Форма и положение обычные, складки слизистой не утолщены, контуры ровные.','На малой кривизне определяется стойкое контрастное депо (ниша) диаметром __ мм.',0],['ВЫХОДНОЙ ОТДЕЛ','Свободно проходим, эвакуация не нарушена.','Просвет выходного отдела сужен до __ мм, эвакуация замедлена.',1],['ДИВЕРТИКУЛЫ','Выпячиваний стенки не выявлено.','Определяется выпячивание стенки диаметром __ мм.',2],['ДЕФЕКТЫ НАПОЛНЕНИЯ','Дефектов наполнения не определяется.','Определяется дефект наполнения размерами __ × __ мм.',3],['ДВЕНАДЦАТИПЕРСТНАЯ КИШКА','Луковица не деформирована, петля без особенностей.']],
+  rjoints:[['СУСТАВНАЯ ЩЕЛЬ','Суставная щель равномерна, обычной ширины.','Суставная щель неравномерно сужена.',0],['КРАЕВЫЕ ОСТЕОФИТЫ','Контуры суставных поверхностей ровные.','По краям суставных поверхностей определяются костные заострения (остеофиты).',1],['СУБХОНДРАЛЬНЫЕ ОТДЕЛЫ','Костная ткань под хрящом без уплотнения.','Определяется уплотнение субхондральных отделов (склероз).',2],['ВЗАИМООТНОШЕНИЯ В СУСТАВЕ','Суставные поверхности конгруэнтны, вывихов и подвывихов нет.','Определяется смещение суставных поверхностей (подвывих).',3],['КОСТНЫЕ СТРУКТУРЫ','Переломов нет, структура костей не изменена.'],['МЯГКИЕ ТКАНИ','Мягкие ткани без особенностей.']],
+  rspine:[['ОСЬ ПОЗВОНОЧНИКА','Ось не нарушена, физиологические изгибы сохранены.','Определяется искривление оси или смещение позвонка на __ мм.',2],['ТЕЛА ПОЗВОНКОВ','Высота и форма тел не изменены, переломов нет.','Определяется снижение высоты тела позвонка с клиновидной деформацией.',3],['МЕЖПОЗВОНКОВЫЕ ПРОМЕЖУТКИ','Высота межпозвонковых промежутков сохранена.','Отмечается снижение высоты межпозвонковых промежутков на уровне L__–L__.',0],['КРАЕВЫЕ РАЗРАСТАНИЯ','Краевых костных разрастаний нет.','По краям тел позвонков определяются костные разрастания (остеофиты).',1],['ДУГООТРОСТЧАТЫЕ СУСТАВЫ','Без особенностей.'],['МЯГКИЕ ТКАНИ','Паравертебральные мягкие ткани без изменений.']],
+  skull:[['КОСТИ СВОДА ЧЕРЕПА','Целостность костей свода не нарушена, линий перелома не выявлено. Швы прослеживаются, не расширены.','Определяется линия просветления в __ кости свода черепа протяжённостью __ мм.',0],['ПАЗУХИ НОСА','Околоносовые пазухи воздушны, уровней жидкости нет.','Слизистая пазух утолщена, определяется уровень жидкости в __ пазухе.',1],['ТУРЕЦКОЕ СЕДЛО','Размеры и форма турецкого седла не изменены.','Определяется изменение формы турецкого седла, размеры __ × __ мм.',2],['ИНОРОДНЫЕ ТЕЛА','Рентгеноконтрастных инородных тел не выявлено.','Определяется рентгеноконтрастная тень размерами __ × __ мм.',3],['ЛИЦЕВОЙ СКЕЛЕТ','Кости лицевого скелета и нижняя челюсть без видимой деструкции.'],['ШЕЙНЫЙ ОТДЕЛ ПОЗВОНОЧНИКА','Видимые позвонки без особенностей.']],
+  head:[['МОЗГОВОЕ ВЕЩЕСТВО','Очагов патологической интенсивности сигнала в веществе больших полушарий не выявлено. Дифференцировка серого и белого вещества сохранена.','Определяется участок изменённой интенсивности сигнала размерами __ × __ мм (повышение на T2 и FLAIR).',0],['ЗОНА ИШЕМИИ','Участков ограничения диффузии не выявлено.','Определяется зона ограничения диффузии (DWI) с пониженным коэффициентом диффузии на ИКД-карте размерами __ × __ мм.',1],['ЛИКВОРОСОДЕРЖАЩИЕ ПРОСТРАНСТВА','Желудочки мозга обычной формы и размеров. Субарахноидальные пространства не расширены. Срединные структуры не смещены.','Желудочки мозга расширены. Срединные структуры смещены на __ мм.',2],['ВНУТРИЧЕРЕПНЫЕ КРОВОИЗЛИЯНИЯ','Признаков кровоизлияния нет.','Определяется зона сниженного сигнала на T2*/SWI, вероятно кровоизлияние.',3],['ОСНОВАНИЕ МОЗГА','Селлярная область без изменений. Ствол мозга и мозжечок не изменены. Краниовертебральный переход без особенностей.'],['КОСТНЫЕ СТРУКТУРЫ','Кости свода черепа без изменений. Околоносовые пазухи воздушны, орбиты не изменены.']],
+  neck:[['ОБРАЗОВАНИЯ','Объёмных образований не выявлено.','Определяется образование размерами __ × __ мм.',0],['ВЕЩЕСТВО МОЗГА','Участков патологической плотности не выявлено.','Определяется зона пониженной плотности, вероятно ишемического характера.',1],['ВНУТРИЧЕРЕПНЫЕ КРОВОИЗЛИЯНИЯ','Кровоизлияний не выявлено.','Определяется зона повышенной плотности, вероятно кровоизлияние.',3],['ОКОЛОНОСОВЫЕ ПАЗУХИ','Пневматизация сохранена, содержимого нет.','Слизистая утолщена, определяется жидкость в пазухах.',2],['СОСУДЫ И ЛИМФОУЗЛЫ ШЕИ','Сосуды шеи нормального диаметра, лимфоузлы не увеличены.'],['КОСТНЫЕ СТРУКТУРЫ','Кости свода и основания черепа без изменений.']],
+  spine:[['СТАТИКА','Физиологический лордоз сохранён.'],['СООТНОШЕНИЕ ПОЗВОНКОВ','Норма, антелистеза и ретролистеза нет.'],['КОСТНЫЕ СТРУКТУРЫ','Высота и форма тел позвонков не изменены. Патологической перестройки костного мозга не выявлено.','Определяется снижение высоты тела позвонка с деформацией по типу компрессии.',3],['МЕЖПОЗВОНКОВЫЕ ДИСКИ','Высота и гидратация дисков сохранены.','Отмечается снижение высоты и гидратации диска на уровне L__–L__.',2],['ГРЫЖИ ДИСКОВ','Выпячиваний дисков не выявлено.','На уровне L__–L__ определяется грыжа диска, выступающая в просвет канала до __ мм, деформирующая дуральный мешок.',0],['ПОЗВОНОЧНЫЙ КАНАЛ','Позвоночный канал нормальной ширины.','Позвоночный канал на уровне L__–L__ сужен до __ мм.',1],['СПИННОЙ МОЗГ','Нормальной толщины, однородной структуры, очагов патологического сигнала нет.']],
+  vessels:[['РАСШИРЕНИЯ ПРОСВЕТА','Расширений просвета сосудов не выявлено.','Определяется расширение просвета до __ мм (аневризма).',0],['СУЖЕНИЯ ПРОСВЕТА','Просвет сосудов не сужен.','Определяется сужение просвета на __ %.',1],['СТЕНКИ СОСУДОВ','Стенки без кальциноза.','Определяются кальцинированные бляшки.',2],['ТРОМБОЗ','Дефектов наполнения нет.','Определяется дефект наполнения, вероятно тромб.',3],['КРОВОТОК','Кровоток симметричный, адекватный. Аневризм и мальформаций нет.']],
+  joints:[['СУСТАВНАЯ ЩЕЛЬ','Суставная щель равномерна.','Суставная щель неравномерно сужена.',0],['КОСТНЫЕ СТРУКТУРЫ','Контуры суставных поверхностей ровные, субхондральные отделы не изменены.','По краям суставных поверхностей определяются краевые костные заострения (остеофиты).',1],['ПОЛОСТЬ СУСТАВА','Выпота нет, синовиальная оболочка не утолщена.','В полости сустава определяется выпот.',2],['МЕНИСКИ И СВЯЗКИ','Мениски не деформированы, связки определяются на всём протяжении.','Мениск деформирован, неоднороден по интенсивности сигнала за счёт повреждения.',3],['ХРЯЩ','Хрящевое покрытие равномерно по толщине.']],
+  limbs:[['КОСТЬ','Целостность кортикального слоя не нарушена.','Определяется линия перелома в средней трети кости.',0],['ПОЛОЖЕНИЕ ОТЛОМКОВ','Смещения нет.','Отломки смещены по ширине на __ мм.',1],['МЯГКИЕ ТКАНИ','Отёка нет.','Определяется гематома мягких тканей размерами __ × __ мм.',2],['ПЛОТНОСТЬ КОСТИ','Структура костной ткани не изменена.','Определяется снижение плотности костной ткани.',3],['СУСТАВЫ','Прилежащие суставы без особенностей.']],
+  pelvis:[['ОБРАЗОВАНИЯ','Кистозных образований не выявлено.','Определяется кистозное образование с чёткими контурами размерами __ × __ мм с однородным жидкостным содержимым.',0],['МАТКА / ПРЕДСТАТЕЛЬНАЯ ЖЕЛЕЗА','Размеры и структура не изменены.','Определяется узел диаметром __ мм.',1],['СВОБОДНАЯ ЖИДКОСТЬ','Свободной жидкости нет.','Определяется свободная жидкость в малом тазу.',2],['ЛИМФОУЗЛЫ','Не увеличены.','Определяются увеличенные лимфоузлы до __ мм.',3],['МОЧЕВОЙ ПУЗЫРЬ','Стенки не утолщены, содержимое однородное.'],['КОСТИ ТАЗА','Костный мозг не изменён.']],
+  softtissue:[['ОБРАЗОВАНИЯ','Объёмных образований не выявлено.','Определяется образование с чёткими границами размерами __ × __ мм.',0],['ОТЁК','Отёка не выявлено.','Определяется зона отёка (повышение сигнала на T2 STIR).',1],['МЫШЦЫ','Мышечные волокна непрерывны.','Определяется нарушение непрерывности волокон на протяжении __ мм.',2],['КИСТЫ','Кист нет.','Определяется киста размерами __ мм.',3],['КОСТНЫЙ МОЗГ','Интенсивность сигнала не изменена.']]};
+/* fuller sections for KT/MRI, following the structure of the MRI report templates (organs, pelvis, vessels, knee, chest) */
+const ABD_ORGANS=[['ПЕЧЕНЬ','Печень не увеличена, однородной структуры. Внутри- и внепечёночные желчные протоки не расширены. Воротная вена не расширена.','Определяется изменение структуры печени, очаг размерами __ × __ мм.',0],['ЖЕЛЧНЫЙ ПУЗЫРЬ И СЕЛЕЗЁНКА','Желчный пузырь обычных размеров, стенки не утолщены, содержимое однородное. Селезёнка не увеличена, структура однородная.','В просвете определяются конкременты (камни) диаметром __ мм.',2],['ПОДЖЕЛУДОЧНАЯ ЖЕЛЕЗА','Не увеличена, контуры чёткие, структура однородная. Панкреатический проток не расширен.'],['КИШЕЧНИК','Петли кишечника не расширены, стенки не утолщены.','Определяются расширенные петли кишечника с уровнями жидкости и газа.',0],['ПОЧКИ И НАДПОЧЕЧНИКИ','Почки расположены правильно, не увеличены, кортикомедуллярная дифференцировка сохранена, чашечно-лоханочная система не расширена. Надпочечники обычной формы и размеров.','В проекции чашечно-лоханочной системы определяется конкремент диаметром __ мм.',2],['БРЮШНОЙ ОТДЕЛ АОРТЫ','Брюшной отдел аорты и другие крупные сосуды без патологических изменений.'],['СВОБОДНАЯ ЖИДКОСТЬ И ГАЗ','Лимфоузлы брюшной полости и забрюшинного пространства не увеличены. Свободная жидкость в брюшной полости не обнаружена.','Определяется свободная жидкость в брюшной полости и/или свободный газ.',3]];
+const PROTO2={
+  'abdomen:ct':ABD_ORGANS,'abdomen:mri':ABD_ORGANS,
+  'chest:mri':[['ГРУДНАЯ КЛЕТКА','Форма грудной клетки обычная. Сигнал плевры не изменён, признаков жидкости в плевральной полости нет.','Определяется жидкость в плевральной полости, толщина слоя __ мм.',1],['ЛЁГОЧНЫЕ ПОЛЯ','Лёгочные поля симметричные, воздушные, очаговых изменений нет.','Определяется участок уплотнения паренхимы размерами __ × __ мм.',0],['ОБРАЗОВАНИЯ','Новообразований в переднем и заднем средостении не определяется. Просвет трахеи и главных бронхов не изменён.','Определяется узловое образование диаметром __ мм.',2],['ЛИМФОУЗЛЫ','Лимфатические узлы паравазальной, паратрахеальной, бифуркационной и бронхиальной групп не увеличены.','Определяются увеличенные лимфоузлы до __ мм.',3],['СЕРДЦЕ И СОСУДЫ','Сердце расположено обычно, камеры не увеличены. Крупные сосуды исследуемой области без особенностей.'],['ДИАФРАГМА И КОСТИ','Диафрагма расположена обычно, контуры ровные и чёткие. Костные структуры исследуемого уровня не изменены.']],
+  pelvis:[['МАТКА / ПРЕДСТАТЕЛЬНАЯ ЖЕЛЕЗА','Размеры в пределах нормы, контуры ровные, структура однородная. Полость матки не деформирована.','Определяется узел (миома, лейомиома) максимальным размером __ см.',1],['ЯИЧНИКИ','Яичники не увеличены, содержат единичные фолликулы, образований нет.','Определяется кистозное образование с чёткими контурами размерами __ × __ см с однородным жидкостным содержимым.',0],['СВОБОДНАЯ ЖИДКОСТЬ','Свободной жидкости в полости таза нет, тазовая брюшина без инфильтратов.','В полости таза определяется свободная жидкость (небольшое / умеренное количество).',2],['ЛИМФОУЗЛЫ','Тазовые лимфатические узлы не увеличены, обычной структуры.','Узлы наружной подвздошной группы увеличены до __ см по короткой оси.',3],['МОЧЕВОЙ ПУЗЫРЬ И ПРЯМАЯ КИШКА','Мочевой пузырь умеренно наполнен, стенки не утолщены. Прямая кишка без особенностей.'],['КОСТИ ТАЗА','Костный мозг без очаговых изменений.']],
+  vessels:[['БРЮШНАЯ АОРТА','Имеет нормальный ход, ветвление и диаметр по кровотоку (норма 18–30 мм). Бифуркация аорты на уровне L4–L5, конфигурация типичная.','Определяется расширение просвета брюшной аорты до __ мм (аневризма).',0],['ВЕТВИ АОРТЫ','Чревный ствол, верхняя и нижняя брыжеечные, почечные артерии отходят в типичном месте, нормального диаметра, контуры чёткие и ровные.','Определяется сужение просвета артерии на __ %.',1],['ПОДВЗДОШНЫЕ И БЕДРЕННЫЕ АРТЕРИИ','Общие, внутренние и наружные подвздошные, общие и поверхностные бедренные артерии нормального диаметра, ровные контуры, гомогенно заполняются контрастным препаратом.','Определяются кальцинированные бляшки в стенках подвздошных артерий.',2],['ПОДКОЛЕННЫЕ АРТЕРИИ','Нормального диаметра, трифуркация в типичном месте, артерии голени имеют нормальный ход.','Определяется дефект наполнения просвета, вероятно тромб.',3]],
+  joints:[['ВЗАИМООТНОШЕНИЯ В СУСТАВЕ','Взаимоотношения суставных поверхностей не нарушены. Суставная щель равномерна. Выпота в полости сустава нет, синовиальная оболочка не утолщена.','Суставная щель неравномерно сужена. В полости сустава определяется выпот.',0],['МЕДИАЛЬНЫЕ ОТДЕЛЫ','Хрящ медиальных мыщелков равномерной толщины, однородной структуры. Медиальный мениск не деформирован, однороден по интенсивности сигнала. Медиальная коллатеральная связка без изменений.','Медиальный мениск деформирован, неоднороден по сигналу за счёт повреждения.',3],['ЛАТЕРАЛЬНЫЕ ОТДЕЛЫ','Хрящ равномерной толщины, латеральный мениск не деформирован, однороден. Латеральная коллатеральная связка нормальной толщины.'],['ПЕРЕДНИЕ ОТДЕЛЫ','Надколенник расположен центрально, хрящ не деформирован. Собственная связка надколенника и удерживатели без особенностей.','В области краёв суставных поверхностей определяются краевые костные заострения (остеофиты).',1],['ЗАДНИЕ ОТДЕЛЫ','Образований в подколенной ямке нет.','В полости сустава определяется выпот (жидкость) в избыточном количестве.',2],['ЦЕНТРАЛЬНЫЕ ОТДЕЛЫ','Передняя и задняя крестообразные связки определяются на всём протяжении, имеют обычный сигнал.']]
+};
+PROTO2.ctpelvis=PROTO2.pelvis;
+function protoData(){
+  return (PROTO2[study+':'+mode]||PROTO2[study]||PROTO[study]||[]).map(([h,n,a,i])=>{const abn=a!==undefined&&result[i].p>=.2;return {h,t:abn?a:n,abn};});
+}
+function protoHTML(){
+  const rows=protoData();
+  return `<div class="proto"><h6>${tr('Протокол описания')} · ${ttl(mode,study)}</h6>
+    <p><b>${tr('ИССЛЕДОВАНИЕ:')}</b> ${tr('первичное.')} <b>${tr('ДИНАМИКА:')}</b> ${tr('предыдущих исследований нет.')}</p>
+    ${contrastOn()?`<p><b>${tr('КОНТРАСТ:')}</b> ${tr('внутривенное контрастное усиление.')}</p>`:''}
+    ${rows.map(r=>`<p class="${r.abn?'abn':''}"><b>${tr(r.h)}:</b> ${tr(r.t).replace(/__/g,'<mark>__</mark>')}</p>`).join('')}
+    <p class="pn">${tr('Поля «__» заполняет врач. Протокол составлен автоматически по шаблонам методических рекомендаций и требует проверки врачом-рентгенологом.')}</p>
+    <button class="btn ghost" id="copyProto" type="button">${tr('Копировать протокол')}</button></div>`;
+}
+function protoText(){
+  return [`${tr('ПРОТОКОЛ:')} ${ttl(mode,study)}`,`${tr('ИССЛЕДОВАНИЕ:')} ${tr('первичное.')} ${tr('ДИНАМИКА:')} ${tr('предыдущих исследований нет.')}`,...(contrastOn()?[`${tr('КОНТРАСТ:')} ${tr('внутривенное контрастное усиление.')}`]:[]),...protoData().map(r=>`${tr(r.h)}: ${tr(r.t)}`),`${tr('ЗАКЛЮЧЕНИЕ:')} ${tr(STUDIES[study].concl)}`].join('\n\n');
+}
+function infoHTML(){const i=INFO[study];
+  return `<div class="info"><h4>${tr('Об исследовании')}</h4><h5>${ttl(mode,study)}</h5><p class="mm">${tr(MODEINFO[mode][1])}</p><p>${tr(i.what)}</p>
+  <h6>${tr('Когда назначают')}</h6><ul>${i.when.map(t=>`<li>${tr(t)}</li>`).join('')}</ul>
+  <h6>${tr('Что проверяет система')}</h6><div class="tags">${i.looks.map(t=>`<span>${tr(t)}</span>`).join('')}</div>
+  ${(inc=>inc&&inc.length?`<h6>${tr('Какие снимки входят в область')}</h6><ul>${inc.map(t=>`<li>${tr(t)}</li>`).join('')}</ul>`:'')(Array.isArray(i.incl)?i.incl:i.incl&&i.incl[mode])}
+  <p class="go">${tr('Нажмите «Анализировать» — появится пример заключения.')}</p></div>`;}
+let mode='xray', study='lungs', img=null, result=null, isDemo=false, isPhoto=false, runId=0, analysisSec=10, fastDemo=true;
+let upLabel=null, upl=null; /* upl: state of the uploaded photo / DICOM shown in #scanbox */
+const badgeText=()=>upLabel?tr(upLabel):isPhoto?tr('Пример · фото'):tr('Пример снимка');
+const $=id=>document.getElementById(id);
+const view=$('view'), ov=$('overlay'), vctx=view.getContext('2d'), octx=ov.getContext('2d');
+const S=800; view.width=view.height=ov.width=ov.height=S;
+
+function renderModes(){
+  $('modes').innerHTML=Object.entries(MODES).map(([k,m])=>
+    `<button class="mode ${k===mode?'active':''}" data-k="${k}"><div class="ic">${m.ic}</div><h3>${tr(m.name)}</h3><p>${tr(m.desc)}</p></button>`).join('');
+  $('modes').querySelectorAll('.mode').forEach(b=>b.onclick=()=>{
+    mode=b.dataset.k; if(!MODES[mode].studies.includes(study)) study=MODES[mode].studies[0];
+    enter(); renderModes(); renderStudies();
+  });
+}
+const contrastOn=()=>mode!=='xray'&&$('contrast').checked;
+function renderCnote(){
+  const n=$('cnote'), on=$('contrast').checked;
+  let t='';
+  if(mode==='mri') t=on?'Перед МРТ обязательна проверка имплантов и металла (кардиостимулятор, клипсы, протезы). Перед гадолиниевым контрастом врач также учитывает функцию почек и беременность.':'Перед МРТ обязательна проверка имплантов и металла (кардиостимулятор, клипсы, протезы).';
+  else if(mode==='ct'&&on) t='Перед йодным контрастом врач проверяет функцию почек (креатинин, СКФ), прошлые реакции на контраст и беременность. Решение о контрасте принимает врач.';
+  n.hidden=!t; n.textContent=t?tr(t):'';
+}
+function renderStudies(){
+  $('contrastRow').hidden=mode==='xray'; renderCnote();
+  $('studies').innerHTML=MODES[mode].studies.map(k=>
+    `<button class="opt ${k===study?'active':''}" data-k="${k}">${tr(MODES[mode].name)}: ${tr(STUDIES[k].name).toLowerCase()}</button>`).join('');
+  $('studies').querySelectorAll('.opt').forEach(b=>b.onclick=()=>{study=b.dataset.k;enter();renderStudies();});
+}
+function reset(){
+  if(isDemo&&img&&!reset.busy){showDemo(true);return;}
+  runId++; $('loader').classList.remove('on'); $('run').disabled=!img;
+  result=null; octx.clearRect(0,0,S,S);
+  $('report').innerHTML=infoHTML();
+  $('hud').textContent = img ? `${tr(MODES[mode].name).toUpperCase()} · ${tr(STUDIES[study].name).toUpperCase()}` : '';
+}
+
+/* ---------- drawing ---------- */
+function drawScan(ctx,w,kind,mod,opts){
+  mod=mod||'xray'; const m0=mod; if(mod==='mri'&&kind!=='head') mod='ct';
+  let seed=kind.length*131+mod.length*17+7;
+  const rnd=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  const P=v=>v*w, K=w/800;
+  const W=a=>`rgba(255,255,255,${a})`, B=a=>`rgba(0,0,0,${a})`, G=(g,a)=>`rgba(${g},${g},${g},${a})`;
+  const comp=m=>ctx.globalCompositeOperation=m;
+  const blob=(x,y,rx,ry,col,b,rot)=>{ctx.save();ctx.filter=`blur(${(b||6)*K}px)`;ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(P(x),P(y),Math.max(.5,P(rx)),Math.max(.5,P(ry)),rot||0,0,7);ctx.fill();ctx.restore();};
+  const line=(a,c,e,col,lw,b)=>{ctx.save();ctx.filter=`blur(${(b||2)*K}px)`;ctx.strokeStyle=col;ctx.lineWidth=lw*K;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(P(a[0]),P(a[1]));ctx.quadraticCurveTo(P(c[0]),P(c[1]),P(e[0]),P(e[1]));ctx.stroke();ctx.restore();};
+  const ring=(x,y,rx,ry,col,lw,b,rot)=>{ctx.save();ctx.filter=`blur(${(b||2)*K}px)`;ctx.strokeStyle=col;ctx.lineWidth=lw*K;ctx.beginPath();ctx.ellipse(P(x),P(y),P(rx),P(ry),rot||0,0,7);ctx.stroke();ctx.restore();};
+  ctx.save(); comp('source-over'); ctx.fillStyle='#000'; ctx.fillRect(0,0,w,w);
+
+  /* ---------- Chest X-ray ---------- */
+  if(kind==='lungs'&&mod==='xray'){
+    blob(.5,.55,.43,.5,G(118,.8),40); blob(.5,.04,.12,.1,G(110,.6),20);
+    blob(.5,.9,.4,.15,G(90,.8),30);
+    blob(.29,.47,.15,.3,B(.85),18,-.05); blob(.71,.47,.15,.3,B(.85),18,.05);
+    blob(.29,.47,.1,.22,B(.4),14,-.05); blob(.71,.47,.1,.22,B(.4),14,.05);
+    comp('lighter');
+    blob(.5,.52,.03,.46,W(.16),8);
+    for(let i=0;i<15;i++) blob(.5,.08+i*.056,.026,.016,W(.05),3);
+    blob(.57,.64,.115,.13,W(.4),14,.4); blob(.5,.52,.05,.15,W(.2),10);
+    for(const s of[-1,1]){
+      for(let i=0;i<10;i++){const y=.16+i*.055;
+        line([.5+s*.04,y],[.5+s*.3,y-.03],[.5+s*.41,y+.17],W(.2),9,2);
+        line([.5+s*.41,y+.17],[.5+s*.26,y+.25],[.5+s*.07,y+.27],W(.08),7,3);}
+      line([.5+s*.04,.13],[.5+s*.2,.1],[.5+s*.38,.17],W(.36),12,2);
+      blob(.5+s*.4,.2,.05,.14,W(.1),12);
+    }
+    for(const[cx,s] of[[.36,-1],[.64,1]]) for(let i=0;i<9;i++){
+      let x=cx,y=.4,a=(s<0?Math.PI:0)+(rnd()-.5)*2.4;
+      for(let j=0;j<3;j++){const nx=x+Math.cos(a)*.07,ny=y+Math.sin(a)*.07+.015;line([x,y],[x+Math.cos(a)*.035+.004,y+Math.sin(a)*.035],[nx,ny],W(.06-.015*j),4-j,2);x=nx;y=ny;a+=(rnd()-.5)*.9;}}
+    blob(.28,.79,.2,.06,W(.2),10); blob(.72,.77,.2,.06,W(.2),10);
+    if(!opts||opts.cons!==0){blob(.34,.42,.09,.085,W(.26),14); blob(.34,.43,.05,.05,W(.12),8);}
+    blob(.7,.74,.1,.05,W(.2),12); blob(.64,.3,.03,.03,W(.3),3);
+  }
+  /* ---------- Chest CT ---------- */
+  else if(kind==='lungs'&&mod==='ct'){
+    blob(.5,.5,.44,.34,G(70,1),3); blob(.5,.5,.41,.31,G(105,1),6);
+    blob(.5,.5,.38,.28,G(130,1),8);
+    blob(.3,.48,.15,.21,B(.97),4,.08); blob(.7,.48,.15,.21,B(.97),4,-.08);
+    comp('lighter');
+    for(const cx of[.3,.7]) for(let i=0;i<60;i++){const a=rnd()*6.28,r=Math.sqrt(rnd());blob(cx+Math.cos(a)*r*.13,.48+Math.sin(a)*r*.18,.004+rnd()*.007,.004+rnd()*.006,W(.2+rnd()*.35),1.5);}
+    blob(.55,.58,.12,.11,W(.2),4); ring(.55,.58,.12,.11,W(.1),4,3);
+    blob(.47,.66,.025,.025,W(.6),1.5); blob(.43,.44,.03,.03,W(.35),2);
+    blob(.5,.76,.065,.055,W(.7),2); ring(.5,.76,.065,.055,W(.85),5,1.5);
+    blob(.5,.68,.03,.026,B(.8),2); ring(.5,.68,.03,.026,W(.55),3,1.5);
+    line([.44,.8],[.5,.88],[.56,.8],W(.55),7,1.5); line([.38,.74],[.35,.7],[.32,.68],W(.5),6,1.5); line([.62,.74],[.65,.7],[.68,.68],W(.5),6,1.5);
+    for(let i=0;i<36;i++){const a=(i/36)*6.28;if(Math.sin(a)>.55&&Math.abs(Math.cos(a))<.35)continue;blob(.5+Math.cos(a)*.375,.5+Math.sin(a)*.275,.014,.02,W(.38),1.5);}
+    ctx.globalCompositeOperation='source-over'; line([.18,.9],[.5,.935],[.82,.9],G(150,.8),6,1);
+    comp('lighter'); blob(.34,.42,.07,.065,W(.4),5); blob(.64,.3,.022,.022,W(.8),1.2);
+  }
+  /* ---------- Abdomen X-ray ---------- */
+  else if(kind==='abdomen'&&mod==='xray'){
+    blob(.5,.52,.42,.5,G(112,.85),36);
+    blob(.32,.3,.14,.13,G(160,.16),12);
+    comp('lighter');
+    blob(.5,.5,.032,.5,W(.22),7); for(let i=0;i<14;i++) blob(.5,.06+i*.065,.032,.02,W(.12),3);
+    for(const s of[-1,1]){
+      for(let i=0;i<3;i++) line([.5+s*.05,.04+i*.04],[.5+s*.3,.04+i*.02],[.5+s*.4,.2+i*.05],W(.22),9,2);
+      blob(.5+s*.22,.89,.17,.1,W(.3),7,s*.5); ring(.5+s*.23,.88,.14,.09,W(.2),6,3,s*.5);
+      blob(.5+s*.07,.89,.06,.08,W(.25),6); line([.5+s*.08,.5],[.5+s*.13,.6],[.5+s*.12,.8],W(.07),22,8);
+    }
+    blob(.5,.84,.07,.07,W(.32),5); blob(.5,.9,.05,.06,W(.25),5);
+    comp('source-over');
+    const loops=[[.4,.33,.1,.02],[.58,.38,.12,.022],[.45,.46,.14,.025],[.6,.53,.12,.022],[.42,.59,.13,.024],[.57,.66,.1,.02]];
+    for(const[x,y,rx,ry] of loops){blob(x,y,rx,ry,B(.55),3);blob(x,y+ry*.9,rx*.92,ry*.5,W(.18),3);
+      for(let k=-4;k<=4;k++) line([x+k*rx*.2,y-ry],[x+k*rx*.2,y],[x+k*rx*.2,y+ry],W(.16),1.5,1);}
+    blob(.28,.5,.045,.12,B(.35),9); blob(.74,.46,.05,.1,B(.3),9);
+    blob(.5,.18,.16,.02,B(.6),4);
+    comp('lighter'); blob(.3,.62,.014,.014,W(.9),1); blob(.3,.62,.03,.03,W(.18),4);
+  }
+  /* ---------- Abdomen CT ---------- */
+  else if(kind==='abdomen'&&mod==='ct'){
+    blob(.5,.5,.44,.34,G(55,1),3); blob(.5,.5,.4,.3,G(120,1),4);
+    blob(.5,.5,.33,.24,G(75,1),7);
+    comp('source-over');
+    blob(.34,.46,.16,.15,G(150,1),4,.25); blob(.75,.4,.05,.1,G(145,1),4,.3);
+    blob(.64,.38,.07,.06,G(125,1),4); blob(.6,.37,.035,.028,B(.5),2);
+    blob(.3,.62,.05,.065,G(185,1),2,.2); blob(.7,.62,.05,.065,G(185,1),2,-.2);
+    blob(.3,.62,.02,.03,G(110,1),2); blob(.7,.62,.02,.03,G(110,1),2);
+    blob(.5,.62,.022,.022,G(235,1),1.2); blob(.44,.6,.03,.022,G(170,1),2);
+    const loops=[[.45,.43,.07,.035],[.56,.5,.08,.04],[.46,.53,.07,.032],[.6,.45,.05,.03]];
+    for(const[x,y,rx,ry] of loops){blob(x,y,rx,ry,G(135,1),2);blob(x,y-ry*.25,rx*.78,ry*.62,B(.85),2);blob(x,y+ry*.55,rx*.75,ry*.3,G(160,.9),2);}
+    comp('lighter');
+    blob(.5,.76,.065,.055,W(.7),2); ring(.5,.76,.065,.055,W(.85),5,1.5);
+    blob(.5,.69,.028,.024,B(.7),2); line([.44,.81],[.5,.88],[.56,.81],W(.5),7,1.5);
+    blob(.3,.62,.007,.007,W(.95),.8);
+    for(let i=0;i<36;i++){const a=(i/36)*6.28;if(Math.sin(a)>.6&&Math.abs(Math.cos(a))<.35)continue;if(Math.abs(Math.sin(a))<.5)blob(.5+Math.cos(a)*.375,.5+Math.sin(a)*.275,.01,.018,W(.28),1.5);}
+    comp('source-over'); line([.18,.9],[.5,.935],[.82,.9],G(150,.8),6,1);
+  }
+  /* ---------- Bones X-ray (forearm) ---------- */
+  else if(kind==='bones'&&mod==='xray'){
+    blob(.5,.5,.2,.5,G(78,.95),28); blob(.5,.5,.14,.5,G(96,.8),18);
+    comp('lighter');
+    const bone=(x,y0,y1,wd,dx)=>{
+      const rr=(cx,ty,bw,bh,col,b)=>{ctx.save();ctx.filter=`blur(${b*K}px)`;ctx.fillStyle=col;ctx.beginPath();ctx.roundRect(P(cx-bw/2),P(ty),P(bw),P(bh),P(bw*.45));ctx.fill();ctx.restore();};
+      rr(x+dx,y0,wd,y1-y0,W(.5),2); rr(x+dx,y0+.012,wd*.52,y1-y0-.024,B(.38),3);
+      for(let i=0;i<90;i++){blob(x+dx+(rnd()-.5)*wd*.5,y0+rnd()*(y1-y0),.002,.008,W(.08),1);}};
+    bone(.435,.03,.97,.07,0);
+    // fractured bone: two fragments, displaced
+    bone(.565,.03,.5,.065,0); bone(.565,.5,.97,.065,.022);
+    comp('source-over'); line([.525,.5],[.565,.488],[.6,.498],B(.85),4,1); comp('lighter'); line([.55,.51],[.59,.52],[.6,.505],W(.25),3,1);
+    blob(.435,.04,.07,.04,W(.45),3); blob(.5,.03,.1,.03,W(.25),6);
+    blob(.435,.96,.08,.04,W(.45),3); blob(.57,.96,.075,.04,W(.45),3);
+    comp('lighter'); blob(.54,.54,.07,.04,W(.12),8);
+  }
+  /* ---------- Upper GI with contrast (stomach) ---------- */
+  else if(kind==='gi'&&mod==='xray'){
+    blob(.5,.5,.42,.5,G(50,.9),34); blob(.5,.5,.03,.5,W(.1),8);
+    comp('lighter');
+    for(const s of[-1,1]) for(let i=0;i<5;i++) line([.5+s*.04,.1+i*.14],[.5+s*.3,.08+i*.14],[.5+s*.4,.2+i*.14],W(.1),8,3);
+    line([.5,.02],[.5,.12],[.5,.22],W(.55),10,2);
+    blob(.46,.4,.15,.2,W(.6),6,.15); blob(.5,.62,.21,.09,W(.58),6,-.1); blob(.66,.65,.05,.05,W(.52),4);
+    line([.68,.66],[.74,.56],[.7,.46],W(.45),12,2);
+    comp('source-over'); blob(.35,.3,.07,.045,B(.7),4);
+    blob(.5,.64,.018,.045,B(.9),2);
+    comp('lighter'); blob(.58,.5,.02,.03,W(.95),1.5); ring(.58,.5,.032,.04,W(.35),3,1.5);
+    blob(.52,.2,.02,.03,W(.8),1.5);
+    for(let i=0;i<9;i++) line([.34+i*.03,.34],[.36+i*.03,.42],[.34+i*.03,.5],W(.12),2,1.5);
+  }
+  /* ---------- Skull X-ray (lateral view, face to the left) ---------- */
+  else if(kind==='skull'&&mod==='xray'){
+    blob(.48,.46,.42,.44,G(58,.9),34); blob(.5,.37,.3,.25,G(100,.75),16); blob(.5,.37,.25,.2,G(72,.6),14);
+    comp('lighter');
+    ring(.5,.37,.29,.245,W(.5),11,2); ring(.5,.37,.265,.222,W(.12),6,3);
+    for(let i=0;i<7;i++){const a=2.2+i*.55;line([.5+Math.cos(a)*.15,.37+Math.sin(a)*.12],[.5+Math.cos(a)*.2,.37+Math.sin(a)*.17],[.5+Math.cos(a)*.24,.37+Math.sin(a)*.2],W(.07),2,1.5);}
+    blob(.42,.52,.035,.03,B(.5),3); ring(.42,.52,.04,.035,W(.6),3,1.2);
+    blob(.23,.42,.04,.05,B(.35),4); ring(.23,.42,.04,.05,W(.4),3,1.5);
+    ring(.28,.51,.07,.06,W(.5),4,1.5);
+    blob(.3,.62,.07,.05,B(.3),4); ring(.3,.62,.08,.055,W(.45),4,1.5);
+    for(let i=0;i<8;i++){blob(.2+i*.027,.72,.012,.026,W(.62),1.2);blob(.2+i*.027,.77,.012,.024,W(.58),1.2);}
+    line([.22,.8],[.4,.88],[.6,.8],W(.55),9,2); line([.6,.8],[.66,.7],[.64,.58],W(.55),8,2);
+    blob(.56,.56,.09,.04,W(.35),5,.2); ring(.58,.58,.025,.025,B(.45),2,1.5);
+    for(let i=0;i<6;i++){blob(.7,.7+i*.05,.03,.02,W(.4),2);blob(.7,.7+i*.05,.02,.01,B(.2),2);}
+    comp('source-over'); line([.58,.1],[.69,.2],[.66,.34],B(.9),4,.8);
+    comp('lighter'); line([.6,.12],[.7,.21],[.67,.33],W(.18),2,1);
+  }
+  /* ---------- Bones CT (vertebra axial) ---------- */
+  else if(kind==='bones'&&mod==='ct'){
+    blob(.5,.5,.44,.38,G(55,1),3); blob(.5,.5,.4,.34,G(118,1),6); blob(.5,.5,.32,.27,G(100,1),10);
+    comp('lighter');
+    blob(.5,.52,.12,.09,W(.42),3); ring(.5,.52,.12,.09,W(.85),9,1.5);
+    for(let i=0;i<60;i++) blob(.5+(rnd()-.5)*.2,.52+(rnd()-.5)*.14,.004,.004,W(.2),1);
+    blob(.5,.37,.038,.034,B(.8),2); ring(.5,.37,.045,.04,W(.8),7,1.5);
+    ring(.5,.33,.12,.09,W(.55),5,2);
+    line([.38,.43],[.34,.45],[.28,.36],W(.7),9,1.5); line([.62,.43],[.66,.45],[.72,.36],W(.7),9,1.5);
+    line([.5,.31],[.5,.22],[.5,.14],W(.75),10,1.5);
+    line([.33,.5],[.2,.54],[.1,.5],W(.5),8,2); line([.67,.5],[.8,.54],[.9,.5],W(.5),8,2);
+    comp('source-over'); line([.43,.47],[.49,.52],[.55,.6],B(.85),3,.8);
+    line([.18,.9],[.5,.935],[.82,.9],W(.4),6,1);
+  }
+  /* ---------- Spine (sagittal) ---------- */
+  else if(kind==='spine'){
+    const X=y=>.4+.07*Math.sin((y-.08)/.84*Math.PI);
+    blob(.5,.5,.3,.48,G(38,.9),30);
+    for(let y=.05;y<.97;y+=.02){blob(X(y)+.085,y,.02,.02,G(215,.9),2);blob(X(y)+.085,y,.009,.02,G(105,.95),2);}
+    comp('source-over');
+    for(let i=0;i<10;i++){const y=.1+i*.088;
+      blob(X(y),y,.048,.034,G(128,1),2); ring(X(y),y,.048,.034,G(175,.8),2,1);
+      blob(X(y+.044),y+.044,.046,.013,G(205,1),2);
+      line([X(y)+.1,y],[X(y)+.17,y+.02],[X(y)+.24,y+.05],G(150,.85),9,2);}
+    blob(X(.584),.584,.046,.013,G(60,1),2);
+    blob(X(.72)+.06,.72,.03,.024,G(170,1),2);
+    blob(.5,.95,.1,.04,G(150,1),3);
+  }
+  /* ---------- Pelvis (axial) ---------- */
+  else if(kind==='pelvis'){
+    blob(.5,.5,.44,.34,G(50,1),3); blob(.5,.5,.4,.3,G(112,1),5);
+    for(const s of[-1,1]){line([.5+s*.06,.3],[.5+s*.3,.26],[.5+s*.36,.5],G(215,.95),14,2);
+      blob(.5+s*.3,.64,.09,.07,G(150,.7),6);}
+    blob(.5,.78,.09,.055,G(190,1),2);
+    blob(.5,.44,.1,.075,G(215,1),3); blob(.5,.58,.06,.045,G(152,1),3);
+    blob(.38,.52,.05,.045,G(230,1),2); ring(.38,.52,.05,.045,G(160,.8),2,1);
+    blob(.545,.56,.022,.02,G(75,1),2); blob(.5,.69,.035,.025,G(85,1),2);
+    line([.18,.9],[.5,.935],[.82,.9],G(150,.8),6,1);
+  }
+  /* ---------- Joint (knee, sagittal) ---------- */
+  else if(kind==='joints'){
+    blob(.5,.5,.3,.5,G(58,.9),28);
+    comp('lighter');
+    blob(.52,.2,.075,.2,W(.45),3); blob(.52,.2,.034,.18,B(.3),3); blob(.5,.43,.125,.06,W(.55),3);
+    blob(.5,.56,.115,.04,W(.55),3); blob(.5,.79,.065,.2,W(.45),3); blob(.5,.79,.03,.18,B(.3),3);
+    blob(.65,.74,.03,.22,W(.4),3); blob(.29,.44,.04,.075,W(.5),3);
+    blob(.34,.4,.04,.1,W(.18),6);
+    blob(.41,.5,.012,.012,W(.9),1); blob(.6,.5,.012,.012,W(.9),1);
+    comp('source-over'); line([.4,.495],[.5,.5],[.6,.495],B(.8),4,1);
+  }
+  /* ---------- Vessels (angiography) ---------- */
+  else if(kind==='vessels'){
+    comp('lighter');
+    blob(.5,.5,.03,.45,W(.07),6);
+    line([.5,.06],[.5,.3],[.5,.55],W(.85),22,1.5);
+    blob(.5,.58,.055,.09,W(.85),2);
+    line([.5,.36],[.38,.36],[.28,.48],W(.7),8,1.5); line([.5,.36],[.62,.36],[.72,.48],W(.7),8,1.5);
+    line([.5,.26],[.6,.2],[.66,.14],W(.6),6,1.5); line([.5,.3],[.42,.24],[.36,.2],W(.55),5,1.5);
+    line([.5,.65],[.42,.74],[.36,.94],W(.75),13,1.5); line([.5,.65],[.58,.74],[.64,.94],W(.75),13,1.5);
+    line([.28,.48],[.24,.58],[.22,.66],W(.45),4,1.5); line([.72,.48],[.76,.58],[.78,.66],W(.45),4,1.5);
+    comp('source-over'); blob(.465,.405,.01,.03,B(.95),1); blob(.535,.405,.01,.03,B(.95),1);
+    comp('lighter'); blob(.43,.72,.008,.008,W(1),.8); blob(.45,.76,.007,.007,W(1),.8);
+  }
+  /* ---------- Soft tissue (limb axial MRI) ---------- */
+  else if(kind==='softtissue'){
+    blob(.5,.5,.4,.4,G(215,1),2); blob(.5,.5,.36,.36,G(105,1),3);
+    for(let i=0;i<6;i++){const a=i*Math.PI/3+.3;line([.5+Math.cos(a)*.12,.5+Math.sin(a)*.12],[.5+Math.cos(a)*.24,.5+Math.sin(a)*.24],[.5+Math.cos(a)*.35,.5+Math.sin(a)*.35],G(205,.55),3,1.5);}
+    blob(.5,.5,.09,.09,G(12,1),2); blob(.5,.5,.06,.06,G(190,1),2);
+    blob(.4,.58,.1,.08,G(165,.55),10);
+    blob(.62,.4,.08,.07,G(238,1),2); ring(.62,.4,.09,.08,G(170,.6),3,5);
+    blob(.45,.35,.03,.02,G(25,.9),2);
+  }
+  /* ---------- Head CT (axial) ---------- */
+  else if(kind==='head'&&mod==='ct'){
+    blob(.5,.5,.4,.45,G(55,1),3); ring(.5,.5,.35,.41,G(245,1),20,1.5);
+    blob(.5,.5,.335,.395,G(92,1),3); blob(.5,.5,.26,.31,G(108,1),12);
+    blob(.44,.45,.026,.09,G(25,1),3,.12); blob(.56,.45,.026,.09,G(25,1),3,-.12); blob(.5,.405,.04,.03,G(25,1),3);
+    blob(.5,.5,.004,.4,G(80,.5),2);
+    blob(.6,.38,.07,.065,G(150,.85),6); blob(.38,.5,.05,.07,G(70,.5),12);
+    comp('lighter'); blob(.5,.9,.1,.03,W(.15),6);
+  }
+  /* ---------- Brain MRI (axial) ---------- */
+  else {
+    blob(.5,.5,.37,.43,G(200,.75),4); blob(.5,.5,.35,.415,G(10,1),2);
+    blob(.5,.5,.335,.4,G(105,1),3);
+    blob(.5,.5,.27,.33,G(172,1),12); blob(.5,.5,.2,.26,G(188,1),12);
+    comp('source-over');
+    for(let ring_=0;ring_<3;ring_++) for(let i=0;i<70;i++){
+      const a=(i/70)*6.28+rnd()*.1, r=.255+ring_*.034+rnd()*.012; const l=.02+rnd()*.03;
+      const x=.5+Math.cos(a)*r*.99, y=.5+Math.sin(a)*r*1.2;
+      line([x,y],[x+Math.cos(a+1.4)*l,y+Math.sin(a+1.4)*l*1.2],[x+Math.cos(a)*l*.8,y+Math.sin(a)*l],B(.3),2.2,1.2);}
+    for(let i=0;i<24;i++){const a=rnd()*6.28,r=.1+rnd()*.14;const x=.5+Math.cos(a)*r,y=.5+Math.sin(a)*r*1.15;blob(x,y,.006,.015,G(140,.5),2,a);}
+    blob(.5,.5,.004,.4,B(.35),2);
+    blob(.5,.405,.045,.035,B(.92),4); blob(.44,.45,.026,.09,B(.92),3,.12); blob(.56,.45,.026,.09,B(.92),3,-.12);
+    blob(.44,.55,.02,.05,B(.85),3,-.2); blob(.56,.55,.02,.05,B(.85),3,.2);
+    blob(.435,.49,.045,.06,G(150,.9),6); blob(.565,.49,.045,.06,G(150,.9),6);
+    blob(.5,.7,.1,.012,B(.6),4);
+    comp('lighter'); blob(.6,.38,.07,.065,W(.26),10); ring(.6,.38,.09,.085,W(.12),8,10);
+    comp('source-over'); blob(.38,.5,.05,.07,B(.16),12);
+  }
+  ctx.restore();
+
+  /* film finish: vignette + noise */
+  const v=ctx.createRadialGradient(w/2,w/2,w*.3,w/2,w/2,w*.75);
+  v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=v;ctx.fillRect(0,0,w,w);
+  const id=ctx.getImageData(0,0,w,w), d=id.data, mri=(kind==='head');
+  for(let i=0;i<d.length;i+=4){const n=(Math.random()-.5)*(mri?20:14);d[i]+=n;d[i+1]+=n;d[i+2]+=n;
+    if(!mri&&mod==='xray'){d[i]=d[i]*.97;d[i+1]=d[i+1]*1.01;d[i+2]=d[i+2]*1.04;}}
+  ctx.putImageData(id,0,0);
+  /* corner markers */
+  ctx.fillStyle='rgba(200,215,225,.7)';ctx.font=`${Math.round(w*.024)}px ui-monospace,Consolas,monospace`;
+  const sag=kind==='spine'||kind==='joints';
+  ctx.fillText(kind==='vessels'?(m0==='ct'?'CTA':'MRA'):(m0==='mri'?'MRI · '+(sag?'SAG':'AX'):m0==='ct'?'CT · '+(sag?'SAG':'AX'):'DR'),w*.04,w*.06);
+  if(kind!=='head'||true){ctx.fillText('R',w*.04,w*.5);ctx.fillText('L',w*.95,w*.5);}
+}
+
+function enter(){ if(!img) showDemo(true); else reset(); }
+function showDemo(quiet){
+  if(upLabel||upl){upLabel=null;upl=null;renderScanBox();}
+  const off=document.createElement('canvas');off.width=off.height=S;
+  drawScan(off.getContext('2d'),S,STUDIES[study].draw||study,mode);
+  img=off; isDemo=true; isPhoto=false; reset.busy=true; paint(quiet); reset.busy=false;
+  /* a real photo in images/<mode>-<study>.(jpg|png|webp) replaces the drawn example */
+  const m=mode, s=study;
+  loadPhoto(m,s,ph=>{
+    if(!ph||!isDemo||mode!==m||study!==s) return;
+    img=ph; isPhoto=true; reset.busy=true; paint(true); reset.busy=false;
+  });
+}
+const photoCache={};
+function loadPhoto(m,s,cb){
+  const key=m+'-'+s;
+  if(key in photoCache) return cb(photoCache[key]||null);
+  const exts=['jpg','jpeg','png','webp']; let i=0;
+  const next=()=>{
+    if(i>=exts.length){photoCache[key]=false;return cb(null);}
+    const im=new Image();
+    im.onload=()=>{photoCache[key]=im;cb(im);};
+    im.onerror=()=>{i++;next();};
+    im.src=`images/${key}.${exts[i]}`;
+  };
+  next();
+}
+function paint(quiet){
+  $('empty').style.display='none'; $('badge').style.display=(isDemo||upLabel)?'':'none';
+  $('badge').textContent=badgeText();
+  $('heatToggle').closest('.heat').style.display=(isDemo&&!isPhoto)?'':'none';
+  vctx.fillStyle='#000';vctx.fillRect(0,0,S,S);
+  const r=Math.min(S/img.width,S/img.height), w=img.width*r, h=img.height*r;
+  vctx.drawImage(img,(S-w)/2,(S-h)/2,w,h);
+  $('run').disabled=false; reset();
+  if(!quiet&&innerWidth<=880) $('stage').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function drawHeat(){
+  octx.clearRect(0,0,S,S);
+  if(!result||!$('heatToggle').checked||!isDemo||isPhoto) return; /* zones are placed on the drawn examples only */
+  result.filter(f=>f.at&&f.p>=.15).forEach(f=>{
+    const [x,y,r]=f.at, X=x*S,Y=y*S,R=r*S*1.6;
+    const col=f.s==='bad'?'248,113,113':'251,191,36';
+    const g=octx.createRadialGradient(X,Y,0,X,Y,R);
+    g.addColorStop(0,`rgba(${col},.55)`);g.addColorStop(1,`rgba(${col},0)`);
+    octx.fillStyle=g;octx.beginPath();octx.arc(X,Y,R,0,7);octx.fill();
+    octx.strokeStyle=`rgb(${col})`;octx.lineWidth=2.5;octx.setLineDash([8,6]);
+    octx.beginPath();octx.arc(X,Y,r*S,0,7);octx.stroke();octx.setLineDash([]);
+    octx.fillStyle=`rgb(${col})`;octx.font='bold 22px system-ui';
+    octx.fillText(Math.round(f.p*100)+'%',X+r*S+8,Y-r*S+6);
+  });
+}
+
+/* ---------- analysis (simulated) ---------- */
+function sevOf(f){return f.p>=.5?'bad':f.p>=.2?'warn':'ok';}
+const SEVTXT={ok:'низкий',warn:'умеренный',bad:'высокий'};
+const fmtSec=n=>n>=60?tr('минуту'):tr('{n} сек',{n});
+function analyze(){
+  $('run').disabled=true; $('loader').classList.add('on');
+  const phases=[[0,tr('Подготовка изображения…')],[.1,tr('Определение области…')],[.3,tr('Поиск патологий…')],[.8,tr('Формирование заключения…')]];
+  $('bar').style.width='0';
+  const my=++runId, D=analysisSec*1000/(fastDemo?5:1), t0=performance.now();
+  const tick=()=>{
+    if(my!==runId) return;
+    const p=Math.min(1,(performance.now()-t0)/D);
+    const ph=[...phases].reverse().find(x=>p>=x[0])[1];
+    $('loadTxt').textContent=`${ph} ${Math.round(p*analysisSec)} / ${analysisSec} ${tr('сек')}`;
+    $('bar').style.width=(p*100)+'%';
+    if(p>=1){$('loader').classList.remove('on');finish();return;}
+    setTimeout(tick,80);
+  };
+  tick();
+}
+let reportDate=new Date();
+function renderReport(){
+  const st=STUDIES[study];
+  $('report').innerHTML=`
+    <h4>${tr('Заключение')}</h4>
+    <h5>${tr(MODES[mode].name)} · ${tr(st.name)}${contrastOn()?' · '+tr('с контрастом'):''}</h5>
+    <div class="meta">${tr('Предварительная оценка · демо-данные · анализ за {t} · {d}',{t:fmtSec(analysisSec),d:reportDate.toLocaleString(LANGS[LANG].loc)})}</div>
+    ${result.map(f=>`<div class="find"><div class="top"><span>${tr(f.n)}<span class="sev ${f.s}">${tr(SEVTXT[f.s])}</span></span><span>${Math.round(f.p*100)}%</span></div>
+      <div class="t"><i data-w="${f.p*100}" style="background:var(--${f.s==='ok'?'ok':f.s})"></i></div></div>`).join('')}
+    <div class="concl"><b>${tr('Предварительное заключение')}</b>${tr(st.concl)}
+      <ul class="recs">${st.recs.map(r=>`<li>${tr(r)}</li>`).join('')}</ul></div>
+    ${protoHTML()}
+    <p class="meta" style="margin-top:12px">${tr('Не является диагнозом. Окончательное решение принимает врач.')}</p>`;
+  requestAnimationFrame(()=>$('report').querySelectorAll('.t i').forEach(e=>e.style.width=e.dataset.w+'%'));
+}
+function finish(){
+  const st=STUDIES[study];
+  result=st.findings.map(f=>{const p=Math.max(.01,Math.min(.97,f.p+(Math.random()-.5)*.08*(10/Math.max(10,analysisSec))));return {...f,p,s:sevOf({p})};});
+  reportDate=new Date();
+  renderReport();
+  drawHeat(); $('run').disabled=false;
+  if(innerWidth<=880) $('report').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ---------- events ---------- */
+const drop=$('drop'), fileIn=$('file');
+const camIn=$('cam');
+drop.onclick=()=>fileIn.click();
+$('pickBtn').onclick=()=>fileIn.click();
+$('camBtn').onclick=()=>camIn.click();
+fileIn.onchange=()=>{loadFiles(fileIn.files);fileIn.value='';};
+camIn.onchange=()=>{loadFiles(camIn.files);camIn.value='';};
+['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',ev=>loadFiles(ev.dataTransfer.files));
+
+/* ---------- upload: photo of a scan + DICOM ---------- */
+const clampN=(v,a,b)=>v<a?a:v>b?b:v;
+function setUploaded(src,label){
+  img=src; isDemo=false; isPhoto=false; upLabel=label;
+  reset.busy=true; paint(true); reset.busy=false;
+  if(innerWidth<=880) $('stage').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function showUploadError(t){ upl={err:t}; renderScanBox(); }
+async function loadFiles(list){
+  const files=[...list].filter(Boolean); if(!files.length) return;
+  try{
+    if(files.every(f=>f.type.startsWith('image/'))) return await loadPhotoFile(files[0]);
+    const dcm=[]; let err=null;
+    for(const f of files){
+      if(f.type.startsWith('image/')) continue;
+      const buf=await f.arrayBuffer(), m=dicomParse(buf);
+      if(m&&m.err) err=m.err; else if(m) dcm.push({buf,m});
+    }
+    if(dcm.length) return loadDicom(dcm);
+    showUploadError(err==='compressed'?'Этот DICOM сжат (JPEG, JPEG 2000): такие файлы пока не читаются. Экспортируйте несжатый DICOM, JPG или PNG.':'Не удалось прочитать файл. Подойдут фото (JPG, PNG) или файл DICOM.');
+  }catch(e){ showUploadError('Не удалось прочитать файл. Подойдут фото (JPG, PNG) или файл DICOM.'); }
+}
+
+/* photo: remove margins and colour cast, stretch contrast, check sharpness / glare / resolution */
+function decodeImage(f){
+  return new Promise((ok,bad)=>{const u=URL.createObjectURL(f),im=new Image();
+    im.onload=()=>{ok(im);setTimeout(()=>URL.revokeObjectURL(u),4000);}; im.onerror=()=>bad(new Error('decode')); im.src=u;});
+}
+function enhancePhoto(im){
+  const W0=im.naturalWidth||im.width, H0=im.naturalHeight||im.height, k=Math.min(1,1600/Math.max(W0,H0));
+  const w=Math.round(W0*k), h=Math.round(H0*k);
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(im,0,0,w,h);
+  const p=x.getImageData(0,0,w,h).data, g=new Uint8ClampedArray(w*h);
+  for(let i=0,j=0;i<g.length;i++,j+=4) g[i]=(p[j]*299+p[j+1]*587+p[j+2]*114)/1000;
+  /* flat bands along the edges (table, wall, blank frame) are cut off, at most 15% per side */
+  const dev=(n,at,step)=>{let s=0,s2=0,m=0;for(let i=0;i<n;i+=3){const v=g[at(i)];s+=v;s2+=v*v;m++;}const a=s/m;return Math.sqrt(Math.max(0,s2/m-a*a));};
+  const rowDev=y=>dev(w,i=>y*w+i), colDev=xx=>dev(h,i=>i*w+xx);
+  let y0=0,y1=h,x0=0,x1=w;
+  while(y0<h*.25&&rowDev(y0)<7) y0++;
+  while(h-y1<h*.25&&y1>y0+10&&rowDev(y1-1)<7) y1--;
+  while(x0<w*.25&&colDev(x0)<7) x0++;
+  while(w-x1<w*.25&&x1>x0+10&&colDev(x1-1)<7) x1--;
+  const cw=x1-x0, ch=y1-y0, hist=new Uint32Array(256); let sum=0, bright=0;
+  for(let yy=y0;yy<y1;yy++)for(let xx=x0;xx<x1;xx++){const v=g[yy*w+xx];hist[v]++;sum+=v;if(v>=252)bright++;}
+  const N=cw*ch, pct=q=>{let a=0;for(let v=0;v<256;v++){a+=hist[v];if(a>=N*q)return v;}return 255;};
+  const lo=pct(.01); let hi=pct(.995); if(hi-lo<40) hi=Math.min(255,lo+40);
+  const lut=new Uint8ClampedArray(256); for(let v=0;v<256;v++) lut[v]=255*Math.pow(clampN((v-lo)/(hi-lo),0,1),.92);
+  const out=document.createElement('canvas'); out.width=cw; out.height=ch;
+  const ox=out.getContext('2d',{willReadFrequently:true}), od=ox.createImageData(cw,ch), o=od.data;
+  for(let yy=0,i=0;yy<ch;yy++)for(let xx=0;xx<cw;xx++,i+=4){const v=lut[g[(yy+y0)*w+xx+x0]];o[i]=o[i+1]=o[i+2]=v;o[i+3]=255;}
+  ox.putImageData(od,0,0);
+  /* sharpness = variance of the Laplacian on a 480px copy */
+  const sw=Math.min(480,cw), sh=Math.max(8,Math.round(ch*sw/cw)), sc=document.createElement('canvas'); sc.width=sw; sc.height=sh;
+  const sx=sc.getContext('2d',{willReadFrequently:true}); sx.drawImage(out,0,0,sw,sh);
+  const sd=sx.getImageData(0,0,sw,sh).data; let ls=0,ls2=0,ln=0;
+  for(let yy=1;yy<sh-1;yy++)for(let xx=1;xx<sw-1;xx++){const i=(yy*sw+xx)*4;
+    const l=4*sd[i]-sd[i-4]-sd[i+4]-sd[i-sw*4]-sd[i+sw*4]; ls+=l;ls2+=l*l;ln++;}
+  const sharp=ls2/ln-(ls/ln)*(ls/ln), glare=bright/N, mean=sum/N;
+  const q=[
+    sharp>=60?{ok:1,t:'Чёткость хорошая'}:{ok:0,t:'Фото размыто: держите телефон неподвижно и коснитесь экрана для фокуса'},
+    glare>.08?{ok:0,t:'Блики на фото: выключите вспышку и уберите отражения'}:mean<28?{ok:0,t:'Слишком темно: добавьте света'}:{ok:1,t:'Освещение ровное'},
+    Math.min(W0,H0)>=600?{ok:1,t:'Разрешение достаточное ({w}×{h})',v:{w:W0,h:H0}}:{ok:0,t:'Низкое разрешение ({w}×{h}): подойдите ближе',v:{w:W0,h:H0}}];
+  return {out,q,sharp,glare,mean};
+}
+async function loadPhotoFile(f){
+  const im=await decodeImage(f), r=enhancePhoto(im);
+  upl={kind:'photo',orig:im,enh:r.out,view:'enh',q:r.q};
+  setUploaded(r.out,'Ваш снимок'); renderScanBox();
+}
+
+/* DICOM: uncompressed little-endian files, one or many (a series is sorted by instance number) */
+function dicomParse(buf){
+  const dv=new DataView(buf), n=buf.byteLength; let p=0;
+  if(n<16) return null;
+  if(n>=132&&dv.getUint32(128,false)===0x4449434D) p=132;
+  else { const g0=dv.getUint16(0,true); if(g0!==8&&g0!==2) return null; }
+  const LONG=new Set(['OB','OW','OF','SQ','UT','UN','UC','UR','OD','OL','OV','SV','UV']);
+  const str=(o,l)=>{let s='';for(let i=0;i<l&&o+i<n;i++){const c=dv.getUint8(o+i);if(c)s+=String.fromCharCode(c);}return s.trim();};
+  const head=(pos,ex)=>{
+    const g=dv.getUint16(pos,true), e=dv.getUint16(pos+2,true);
+    if(g===0xFFFE) return {g,e,len:dv.getUint32(pos+4,true),hdr:8};
+    if(!ex) return {g,e,len:dv.getUint32(pos+4,true),hdr:8};
+    const vr=String.fromCharCode(dv.getUint8(pos+4),dv.getUint8(pos+5));
+    return LONG.has(vr)?{g,e,vr,len:dv.getUint32(pos+8,true),hdr:12}:{g,e,vr,len:dv.getUint16(pos+6,true),hdr:8};
+  };
+  const UNDEF=0xFFFFFFFF;
+  const skipVal=(pos,h,ex)=>h.len===UNDEF?skipUndef(pos+h.hdr,ex):pos+h.hdr+h.len;
+  function skipUndef(pos,ex){
+    while(pos+8<=n){
+      const h=head(pos,ex);
+      if(h.g===0xFFFE&&h.e===0xE0DD) return pos+8;
+      if(h.g===0xFFFE&&h.e===0xE000){
+        if(h.len!==UNDEF){pos+=8+h.len;continue;}
+        pos+=8;
+        while(pos+8<=n){const b=head(pos,ex); if(b.g===0xFFFE&&b.e===0xE00D){pos+=8;break;} pos=skipVal(pos,b,ex);}
+        continue;
+      }
+      return n;
+    }
+    return n;
+  }
+  const m={rows:0,cols:0,bits:16,stored:16,pr:0,spp:1,photo:'MONOCHROME2',slope:1,icpt:0,wc:null,ww:null,frames:1,mod:'',inst:0,pix:-1,planar:0,ts:''};
+  let ex=true, metaDone=false;
+  while(p+8<=n){
+    const g=dv.getUint16(p,true);
+    if(g!==2&&!metaDone){
+      metaDone=true;
+      if(m.ts==='1.2.840.10008.1.2.2') return {err:'be'};
+      ex=m.ts!=='1.2.840.10008.1.2';
+    }
+    const h=head(p,g===2?true:ex), vp=p+h.hdr, ok=h.len!==UNDEF&&vp+h.len<=n, key=(h.g<<16|h.e)>>>0;
+    if(key===0x7FE00010){
+      if(h.len===UNDEF) return {err:'compressed'};
+      if(m.ts&&m.ts!=='1.2.840.10008.1.2'&&m.ts!=='1.2.840.10008.1.2.1') return {err:'compressed'};
+      m.pix=vp; break;
+    }
+    if(ok){
+      const us=()=>dv.getUint16(vp,true), s=()=>str(vp,h.len), num=()=>parseFloat(s().split('\\')[0]);
+      switch(key){
+        case 0x00020010: m.ts=s(); break;
+        case 0x00080060: m.mod=s(); break;
+        case 0x00200013: m.inst=parseInt(s(),10)||0; break;
+        case 0x00280002: m.spp=us(); break;
+        case 0x00280004: m.photo=s(); break;
+        case 0x00280006: m.planar=us(); break;
+        case 0x00280008: m.frames=parseInt(s(),10)||1; break;
+        case 0x00280010: m.rows=us(); break;
+        case 0x00280011: m.cols=us(); break;
+        case 0x00280100: m.bits=us(); break;
+        case 0x00280101: m.stored=us(); break;
+        case 0x00280103: m.pr=us(); break;
+        case 0x00281050: m.wc=num(); break;
+        case 0x00281051: m.ww=num(); break;
+        case 0x00281052: m.icpt=num()||0; break;
+        case 0x00281053: m.slope=num()||1; break;
+      }
+    }
+    const nx=skipVal(p,h,g===2?true:ex);
+    if(nx<=p) break; p=nx;
+  }
+  if(m.pix<0||!m.rows||!m.cols) return null;
+  if(m.photo.startsWith('YBR')||m.photo==='PALETTE COLOR') return {err:'compressed'};
+  if(!(m.bits===8||m.bits===16)) return {err:'compressed'};
+  return m;
+}
+function dicomRender(buf,m,fi){
+  const R=m.rows, C=m.cols, bytes=m.bits/8, fs=R*C*m.spp*bytes, off=m.pix+fi*fs;
+  if(off+fs>buf.byteLength) throw new Error('short');
+  const c=document.createElement('canvas'); c.width=C; c.height=R;
+  const x=c.getContext('2d'), od=x.createImageData(C,R), o=od.data, N=R*C;
+  if(m.spp===3){
+    const u=new Uint8Array(buf,off,fs);
+    for(let i=0;i<N;i++){const s=m.planar?[i,i+N,i+2*N]:[i*3,i*3+1,i*3+2];o[i*4]=u[s[0]];o[i*4+1]=u[s[1]];o[i*4+2]=u[s[2]];o[i*4+3]=255;}
+    x.putImageData(od,0,0); return c;
+  }
+  const signed=m.pr===1, v=new Float32Array(N);
+  let a;
+  if(m.bits===8) a=signed?new Int8Array(buf,off,N):new Uint8Array(buf,off,N);
+  else { const b=(off%2?buf.slice(off,off+fs):buf); a=signed?new Int16Array(b,off%2?0:off,N):new Uint16Array(b,off%2?0:off,N); }
+  const mask=!signed&&m.bits===16&&m.stored<16?(1<<m.stored)-1:0xFFFF;
+  for(let i=0;i<N;i++) v[i]=((m.bits===16&&!signed?a[i]&mask:a[i]))*m.slope+m.icpt;
+  let lo,hi;
+  if(m.ww>1&&m.wc!==null&&!isNaN(m.wc)){lo=m.wc-m.ww/2;hi=m.wc+m.ww/2;}
+  else { const smp=new Float32Array(Math.ceil(N/7)); for(let i=0,j=0;i<N;i+=7)smp[j++]=v[i]; smp.sort(); lo=smp[Math.floor(smp.length*.005)];hi=smp[Math.floor(smp.length*.995)]; if(hi<=lo)hi=lo+1; }
+  const inv=m.photo==='MONOCHROME1';
+  for(let i=0;i<N;i++){let t=clampN((v[i]-lo)/(hi-lo),0,1)*255; if(inv)t=255-t; o[i*4]=o[i*4+1]=o[i*4+2]=t; o[i*4+3]=255;}
+  x.putImageData(od,0,0); return c;
+}
+const DMOD={CR:'xray',DX:'xray',DR:'xray',RF:'xray',XA:'xray',MG:'xray',CT:'ct',MR:'mri'};
+function loadDicom(items){
+  items.sort((a,b)=>a.m.inst-b.m.inst);
+  const frames=[]; items.forEach(it=>{for(let j=0;j<it.m.frames;j++)frames.push([it,j]);});
+  const idx=Math.floor(frames.length/2), dm=DMOD[items[0].m.mod]||null;
+  if(dm&&dm!==mode){ mode=dm; if(!MODES[mode].studies.includes(study)) study=MODES[mode].studies[0]; renderModes(); renderStudies(); }
+  upl={kind:'dicom',frames,idx,auto:dm,mod:items[0].m.mod,dim:`${items[0].m.cols}×${items[0].m.rows}`,files:items.length};
+  showDicomFrame(idx,true);
+}
+function showDicomFrame(i,first){
+  try{
+    const [it,j]=upl.frames[i]; upl.idx=i;
+    const c=dicomRender(it.buf,it.m,j);
+    if(first){setUploaded(c,'DICOM'); renderScanBox();}
+    else {img=c; reset.busy=true; paint(true); reset.busy=false; const lb=$('frameLbl'); if(lb) lb.textContent=tr('Срез {n} из {m}',{n:i+1,m:upl.frames.length});}
+  }catch(e){ showUploadError('Не удалось прочитать файл. Подойдут фото (JPG, PNG) или файл DICOM.'); }
+}
+function renderScanBox(){
+  const b=$('scanbox'); if(!upl){b.hidden=true;b.className='scanbox';b.innerHTML='';return;}
+  b.hidden=false; b.className='scanbox'+(upl.err?' err':'');
+  if(upl.err){b.innerHTML=`<div class="sb-h">${tr('Не удалось прочитать файл')}</div><div class="sb-sub">${tr(upl.err)}</div>`;return;}
+  if(upl.kind==='photo'){
+    const good=upl.q.every(x=>x.ok);
+    b.innerHTML=`<div class="sb-h"><span>${tr('Фото обработано')}</span><span class="sb-chip ${good?'ok':'warn'}">${tr(good?'Готово к анализу':'Лучше переснять')}</span></div>
+      <div class="sb-sub">${tr('Убраны поля и цветовой оттенок, выровнены яркость и контраст.')}</div>
+      <ul class="sb-q">${upl.q.map(x=>`<li class="${x.ok?'':'warn'}">${tr(x.t,x.v)}</li>`).join('')}</ul>
+      <div class="seg"><button type="button" data-v="orig" class="${upl.view==='orig'?'on':''}">${tr('Исходное')}</button><button type="button" data-v="enh" class="${upl.view==='enh'?'on':''}">${tr('Улучшенное')}</button></div>`;
+    return;
+  }
+  const many=upl.frames.length>1, mn=upl.auto?tr(MODES[upl.auto].name):upl.mod;
+  b.innerHTML=`<div class="sb-h"><span>${tr('DICOM прочитан')}</span><span class="sb-chip ok">${mn||'DICOM'} · ${upl.dim}</span></div>
+    ${upl.auto?`<div class="sb-sub">${tr('Вид исследования определён по файлу: {m}',{m:mn})}</div>`:''}
+    ${many?`<label class="frame"><span id="frameLbl">${tr('Срез {n} из {m}',{n:upl.idx+1,m:upl.frames.length})}</span><input type="range" id="frameRange" min="0" max="${upl.frames.length-1}" value="${upl.idx}"></label>`:''}
+    <div class="sb-sub">${tr('Данные пациента из файла не считываются и не показываются.')}</div>`;
+}
+$('scanbox').addEventListener('click',e=>{
+  const s=e.target.closest('.seg button'); if(!s||!upl||upl.kind!=='photo') return;
+  upl.view=s.dataset.v; img=upl.view==='orig'?upl.orig:upl.enh;
+  reset.busy=true; paint(true); reset.busy=false; renderScanBox();
+});
+$('scanbox').addEventListener('input',e=>{ if(e.target.id==='frameRange'&&upl&&upl.frames) showDicomFrame(+e.target.value); });
+document.addEventListener('langchange',renderScanBox);
+$('demoBtn').onclick=()=>showDemo();
+$('report').addEventListener('click',e=>{
+  const b=e.target.closest('#copyProto'); if(!b||!result) return;
+  const done=ok=>{
+    b.textContent=ok?tr('Скопировано ✓'):tr('Выделите текст ниже и нажмите Ctrl+C');
+    if(!ok){let ta=b.parentNode.querySelector('.ptext');if(!ta){ta=document.createElement('textarea');ta.className='ptext';ta.readOnly=true;ta.rows=10;b.after(ta);}ta.value=protoText();ta.focus();ta.select();}
+    setTimeout(()=>b.textContent=tr('Копировать протокол'),ok?1800:4000);};
+  const fallback=()=>{const t=document.createElement('textarea');t.value=protoText();document.body.appendChild(t);t.select();let ok=false;try{ok=document.execCommand('copy');}catch(_){}t.remove();done(ok);};
+  if(navigator.clipboard&&window.isSecureContext) navigator.clipboard.writeText(protoText()).then(()=>done(true),fallback); else fallback();
+});
+$('run').onclick=analyze;
+$('contrast').onchange=()=>{ renderCnote(); if(result) renderReport(); };
+document.addEventListener('langchange',renderCnote);
+$('heatToggle').onchange=drawHeat;
+
+/* hero animation */
+(function(){
+  const c=$('heroCanvas'),x=c.getContext('2d'),N=520;
+  const base=document.createElement('canvas');base.width=base.height=N;
+  drawScan(base.getContext('2d'),N,'lungs','xray',{cons:0});
+  const chip=$('sevChip'),range=$('sevRange'),dot=$('sevDot'),val=$('sevVal'),txt=$('sevTxt'),fill=$('sevFill'),btns=[...chip.querySelectorAll('.sevBtns button')];
+  let cur=62,raf=0,tok=0;
+  const lvl=v=>v>=60?['248,113,113','var(--bad)']:v>=30?['251,191,36','var(--warn)']:['52,211,153','var(--ok)'];
+  const words=v=>tr(v<8?'Норма: затемнения не выявлено.':v<30?'Лёгкое: небольшое локальное уплотнение ткани.':v<60?'Умеренное: возможен начальный воспалительный очаг.':v<80?'Выраженное: вероятна пневмония, нужна консультация врача.':'Тяжёлое: массивное затемнение, требуется срочная оценка.');
+  function paint(v){
+    x.clearRect(0,0,N,N);x.drawImage(base,0,0);const k=v/100,cx=N*.34,cy=N*.42;
+    if(k>.02){x.save();x.globalCompositeOperation='lighter';x.filter=`blur(${10*N/800}px)`;
+      const R=N*(.04+.085*k);x.fillStyle=`rgba(255,255,255,${.05+.5*k})`;x.beginPath();x.ellipse(cx,cy,R,R*.95,0,0,7);x.fill();
+      x.fillStyle=`rgba(255,255,255,${.04+.22*k})`;x.beginPath();x.ellipse(cx+N*.01,cy+N*.012,R*.55,R*.5,0,0,7);x.fill();x.restore();}
+    if(v>=8){const col=lvl(v)[0],r=N*(.07+.07*k);x.strokeStyle=`rgba(${col},.95)`;x.lineWidth=3;x.setLineDash([8,6]);
+      x.beginPath();x.arc(cx,cy,r,0,7);x.stroke();x.setLineDash([]);x.fillStyle=`rgb(${col})`;x.font='bold 19px system-ui';
+      x.fillText(Math.round(v)+'%',cx+r*.72,cy-r*.72);}
+  }
+  function show(v){
+    v=Math.round(v);val.textContent=v;dot.style.background=lvl(v)[1];range.value=v;fill.style.width=(100-v)+'%';
+    txt.textContent=words(v);btns.forEach(b=>b.classList.toggle('on',+b.dataset.v===v));paint(v);
+  }
+  function go(to){
+    cancelAnimationFrame(raf);const from=cur,t0=performance.now(),d=420;
+    const step=t=>{const p=Math.min(1,(t-t0)/d),e=1-Math.pow(1-p,3);cur=from+(to-from)*e;show(cur);if(p<1)raf=requestAnimationFrame(step);else{cur=to;show(to);}};
+    raf=requestAnimationFrame(step);
+    const my=++tok;setTimeout(()=>{if(my===tok&&cur!==to){cancelAnimationFrame(raf);cur=to;show(to);}},d+80);
+  }
+  function toggle(){const o=chip.classList.toggle('open');chip.setAttribute('aria-expanded',o);}
+  chip.addEventListener('click',e=>{if(e.target.closest('.sevPanel'))return;toggle();});
+  chip.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target===chip){e.preventDefault();toggle();}
+    if(e.key==='Escape')chip.classList.remove('open');});
+  range.addEventListener('input',()=>{cancelAnimationFrame(raf);tok++;cur=+range.value;show(cur);});
+  btns.forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();go(+b.dataset.v);}));
+  show(62);
+  document.addEventListener('langchange',()=>show(cur));
+})();
+
+renderModes(); renderStudies(); enter();
+
+/* open an area in the analyzer (shared by coverage list and hero stat panels) */
+function openStudy(m,s){
+  mode=m;study=s;img=null;isDemo=false;vctx.clearRect(0,0,S,S);$('empty').style.display='';
+  enter();renderModes();renderStudies();$('lab').scrollIntoView({behavior:'smooth'});
+}
+
+/* hero stat cards: click shows what is behind the number */
+const statPanel=document.createElement('div');statPanel.className='statPanel';statPanel.id='statPanel';statPanel.hidden=true;
+document.querySelector('.stats').after(statPanel);
+const areaBtn=(m,s)=>`<button type="button" class="chipBtn" data-m="${m}" data-s="${s}">${tr(STUDIES[s].name)}</button>`;
+const STATP={
+  modes:()=>`<h6>${tr('{n} вида исследований',{n:3})}</h6>`+Object.entries(MODES).map(([k,m])=>`
+    <div class="sp-row"><span class="sp-ic">${m.ic}</span><div><b>${tr(m.name)}</b><small>${tr(m.desc)}</small></div>
+    <span class="sp-n">${tr('{n} обл.',{n:m.studies.length})}</span>
+    <button type="button" class="chipBtn go" data-m="${k}" data-s="${m.studies[0]}">${tr('Открыть →')}</button></div>`).join(''),
+  areas:()=>`<h6>${tr('{n} областей исследования',{n:$('statAreas').textContent})}</h6><div class="sp-cols">`+Object.entries(MODES).map(([k,m])=>
+    `<div><b>${tr(m.name)}</b><div class="sp-chips">${m.studies.map(s=>areaBtn(k,s)).join('')}</div></div>`).join('')+`</div>`,
+  time:()=>{const st=[['Загрузка снимка',.1],['Определение области',.2],['Поиск патологий',.5],['Заключение и протокол',.2]];
+    return `<h6>${analysisSec>=60?tr('Что происходит за минуту'):tr('Что происходит за ~{n} сек',{n:analysisSec})}</h6>`+st.map(([n,w],i)=>`
+    <div class="sp-step" style="--d:${i*.25}s"><span class="sp-num">${i+1}</span><div class="sp-body"><div class="sp-top"><span>${tr(n)}</span><em>${+(w*analysisSec).toFixed(1)} ${tr('сек')}</em></div>
+    <div class="sp-bar"><i style="--w:${w*200}%"></i></div></div></div>`).join('')+
+    `<button type="button" class="chipBtn go run" data-m="xray" data-s="lungs" data-run="1">${tr('Показать на примере →')}</button>
+     <p class="sp-note">${tr('Время ориентировочное: зависит от размера снимка и области.')}</p>`;}
+};
+let statOpen=null;
+function toggleStat(k){
+  const cards=document.querySelectorAll('.stat');
+  if(statOpen===k){statOpen=null;statPanel.hidden=true;}
+  else{statOpen=k;statPanel.innerHTML=STATP[k]();statPanel.hidden=false;}
+  cards.forEach(c=>{const on=c.dataset.p===statOpen;c.classList.toggle('on',on);c.setAttribute('aria-expanded',on);});
+}
+document.querySelectorAll('.stat').forEach(c=>{
+  c.addEventListener('click',()=>toggleStat(c.dataset.p));
+  c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleStat(c.dataset.p);}});
+});
+statPanel.addEventListener('click',e=>{
+  const b=e.target.closest('.chipBtn');if(!b)return;
+  openStudy(b.dataset.m,b.dataset.s);
+  if(b.dataset.run) setTimeout(()=>{if(!$('run').disabled)analyze();},700);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&statOpen)toggleStat(statOpen);});
+
+/* coverage lists built from the same data; click opens that study in the analyzer */
+$('statAreas').textContent=Object.values(MODES).reduce((n,m)=>n+m.studies.length,0);
+function buildCoverage(){
+  Object.entries(MODES).forEach(([k,m])=>{
+    $('ul-'+k).innerHTML=m.studies.map(s=>`<li><button type="button" data-m="${k}" data-s="${s}">${tr(MODEINFO[k][0])} ${tr(STUDIES[s].name).toLowerCase()}</button></li>`).join('');
+  });
+  document.querySelectorAll('.areas button').forEach(b=>b.onclick=()=>openStudy(b.dataset.m,b.dataset.s));
+}
+buildCoverage();
+
+/* logo = home: scroll to top and reset the analyzer */
+document.querySelector('.logo').addEventListener('click',e=>{
+  e.preventDefault();
+  mode='xray';study='lungs';img=null;isDemo=false;
+  vctx.clearRect(0,0,S,S);$('empty').style.display='';fileIn.value='';
+  enter();renderModes();renderStudies();
+  history.replaceState(null,'',location.pathname+location.search);
+  window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(()=>{if(scrollY>0)window.scrollTo({top:0,behavior:'instant'});},900);
+});
+
+/* hero chip 2: choose how long the report takes; the demo analysis and the stat card follow it */
+(function(){
+  const chip=$('timeChip'),range=$('timeRange'),val=$('timeVal'),txt=$('timeTxt'),fast=$('fastDemo'),btns=[...chip.querySelectorAll('.sevBtns button')];
+  const lvl=n=>tr(n<15?'Экспресс: быстрый скрининг, основные находки.':n<30?'Стандарт: находки, зоны и протокол описания.':n<60?'Подробный: повторная проверка зон и детальный протокол.':'Углублённый: максимальная детализация, спорные зоны проверяются дважды.');
+  function set(n){
+    analysisSec=n;range.value=n;val.textContent=fmtSec(n);
+    $('statTime').textContent=n>=60?tr('~1 мин'):tr('~{n} сек',{n});
+    txt.textContent=lvl(n);btns.forEach(b=>b.classList.toggle('on',+b.dataset.v===n));
+    if(typeof statOpen!=='undefined'&&statOpen==='time') statPanel.innerHTML=STATP.time();
+  }
+  function toggle(){const o=chip.classList.toggle('open');chip.setAttribute('aria-expanded',o);}
+  chip.addEventListener('click',e=>{if(e.target.closest('.sevPanel'))return;toggle();});
+  chip.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target===chip){e.preventDefault();toggle();}
+    if(e.key==='Escape')chip.classList.remove('open');});
+  range.addEventListener('input',()=>set(+range.value));
+  btns.forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();set(+b.dataset.v);}));
+  fast.addEventListener('change',()=>{fastDemo=fast.checked;});
+  set(10);
+  document.addEventListener('langchange',()=>set(analysisSec));
+})();
+
+/* ---------- AI consultant (demo: scripted answers, no backend; understands ru / uz / tg) ---------- */
+(function(){
+  const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  /* normalise typed text so that uz apostrophes / tg letters (ӣ ӯ қ ғ ҳ ҷ) / ё match keywords written in plain letters */
+  const norm=s=>s.toLowerCase().replace(/[‘’ʻʼ'`´]/g,'').replace(/ӣ/g,'и').replace(/ӯ/g,'у').replace(/қ/g,'к').replace(/ғ/g,'г').replace(/ҳ/g,'х').replace(/ҷ/g,'ч').replace(/ё/g,'е');
+  const has=(t,words)=>new RegExp('(^|[^a-zа-я])('+words+')').test(t);
+
+  const fab=document.createElement('button');fab.type='button';fab.className='ai-fab';
+  const panel=document.createElement('div');panel.className='ai-panel';panel.setAttribute('role','dialog');panel.hidden=true;
+  document.body.append(fab,panel);
+  let msgs,chips,input,started=false;
+  const SUGG=['Что такое КТ?','Какие области есть?','Как загрузить снимок?','Объясни мой результат','Что показывает МРТ головы?','Сколько длится анализ?'];
+  function build(){
+    fab.setAttribute('aria-label',tr('Открыть ИИ-консультанта'));
+    fab.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/><path d="M12 8.5v5M9.5 11h5"/></svg><span>${tr('ИИ-консультант')}</span>`;
+    panel.setAttribute('aria-label',tr('ИИ-консультант'));
+    panel.innerHTML=`<div class="ai-head"><div class="ai-ava">✚</div><div><b>${tr('ИИ-консультант')}</b><small><i></i>${tr('Демо-режим · ответы шаблонные')}</small></div><button type="button" class="ai-x" aria-label="${tr('Закрыть')}">×</button></div>
+      <div class="ai-msgs" aria-live="polite"></div>
+      <div class="ai-chips">${SUGG.map(s=>`<button type="button">${tr(s)}</button>`).join('')}</div>
+      <form class="ai-form"><input type="text" placeholder="${tr('Задайте вопрос…')}" autocomplete="off" maxlength="300"><button type="submit" aria-label="${tr('Отправить')}">➤</button></form>`;
+    msgs=panel.querySelector('.ai-msgs');chips=panel.querySelector('.ai-chips');input=panel.querySelector('input');
+    started=false;
+  }
+  const scroll=()=>{msgs.scrollTop=msgs.scrollHeight;};
+  const add=(who,html)=>{const d=document.createElement('div');d.className='ai-m '+who;d.innerHTML=html;msgs.appendChild(d);scroll();return d;};
+
+  const AREAS=[
+    ['legk|pnevmon|opka|шуш',['lungs','chest']],['grudn|kokrak|сина|кафаси',['chest']],
+    ['брюш|живот|кишеч|печен|почк|желуд|qorin|ichak|jigar|buyrak|oshqozon|шикам|руда|чигар|гурда|меда',['abdomen','gi','ctkidney']],
+    ['кост|перелом|suyak|sinish|singan|устухон|шикаст',['bones','limbs']],
+    ['голов|мозг|череп|bosh|miya|kalla|сар|майна|косахона',['head','ctbrain','neck','skull']],['шея|шеи|шее|boyin|гардан',['neck']],
+    ['позвоночник|спин|грыж|umurtqa|orqa|churra|сутунмухра|пушт|чурра',['spine','rspine']],
+    ['сосуд|артер|аорт|вен|tomir|arteriya|aorta|vena|раг|вариди',['vessels']],
+    ['сустав|колен|плеч|bogim|tizza|yelka|буг|зону|китф',['joints','rjoints']],
+    ['конечност|рук|ног|стоп|кист|oyoq|qol|kaft|tovon|ekstremit|даст|пой|панча|андом',['limbs']],
+    ['таз|матк|простат|chanoq|bachadon|prostata|косаи|бачадон',['pelvis','ctpelvis']],
+    ['мягк|мышц|yumshoq|mushak|нарм|мушак|бофта',['softtissue']],
+    ['гипофиз|gipofiz|гипофиз',['mpit']],['орбит|глаз|кўз|ko.z kosa|чашм|ковокии',['morbit']],
+    ['пазух|синусит|гайморит|sinus|burun|бинӣ|ғор',['msinus','skull']],['забрюшин|qorin parda|паси парда',['mretro','ctkidney']]];
+  AREAS[0][0]='легк|пневмон|opka|шуш'; AREAS[1][0]='грудн|kokrak|сина|кафаси';
+  const MODE_KEYS=[['мрт|магнит|mrt',"mri"],['кт|томограф|kt|tomograf','ct'],['рентген|рентг|rentgen','xray']];
+  const pairsFor=t=>{
+    const want=new Set();AREAS.forEach(([ks,ss])=>{if(has(t,ks))ss.forEach(s=>want.add(s));});
+    const ms=MODE_KEYS.filter(([ks])=>has(t,ks)).map(x=>x[1]);
+    const out=[];
+    for(const [m,mi] of Object.entries(MODES))for(const s of mi.studies){if(want.has(s)&&(!ms.length||ms.includes(m)))out.push([m,s]);}
+    return out;
+  };
+  const SEV={ok:'низкий',warn:'умеренный',bad:'высокий'};
+  const goBtn=()=>`<button type="button" class="ai-act" data-go="lab">${tr('Перейти к диагностике →')}</button>`;
+  const openBtn=(m,s)=>`<button type="button" class="ai-act" data-m="${m}" data-s="${s}">${tr('Открыть:')} ${ttl(m,s)} →</button>`;
+  const studyCard=(m,s)=>`<b>${ttl(m,s)}</b><br>${tr(INFO[s].what)}<br><b>${tr('Когда назначают:')}</b> ${INFO[s].when.map(x=>tr(x)).join('; ')}.<br><b>${tr('Что проверяет система:')}</b> ${INFO[s].looks.map(x=>tr(x).toLowerCase()).join(', ')}.`;
+
+  function explainResult(){
+    if(!result) return tr('Сначала выполните анализ: выберите область, нажмите «Анализировать» — и я объясню результат.')+'<br>'+goBtn();
+    const sorted=[...result].sort((a,b)=>b.p-a.p),top=sorted[0];
+    return tr('<b>{t}</b> — последний анализ.<br>Самая вероятная находка: <b>{f}</b> — {p}% (уровень: {s}).',{t:ttl(mode,study),f:tr(top.n),p:Math.round(top.p*100),s:tr(SEV[top.s])})+'<br>'
+      +sorted.slice(1,3).map(f=>`• ${tr(f.n)}: ${Math.round(f.p*100)}%`).join('<br>')
+      +`<br><br>${tr(STUDIES[study].concl)}<br><br><i>${tr('Проценты — условная оценка вероятности, не диагноз. Решение всегда принимает врач.')}</i>`;
+  }
+  const modeAnswer=m=>`<b>${tr(MODEINFO[m][0])}</b><br>${tr(MODEINFO[m][1])}<br>${tr('Областей в сервисе:')} <b>${MODES[m].studies.length}</b> (${MODES[m].studies.map(s=>tr(INFO[s].gen)).join(', ')}).`;
+
+  function reply(q){
+    const t=norm(q).trim();
+    if(has(t,'срочн|скор|кровь|не могу дышать|сильн.* бол|потер.* сознан|инсульт|инфаркт|shoshilinch|tez yordam|nafas|hushdan|insult|infarkt|qattiq ogriq|фаври|таъчили|нафас|хуш|дарди сахт|сакта'))
+      return tr('⚠️ При сильной боли, затруднении дыхания, потере сознания или других тревожных симптомах не ждите анализа снимков — <b>немедленно вызовите скорую помощь</b> или обратитесь в ближайшую клинику.');
+    if(has(t,'диагноз|лечен|лекарств|таблет|что принимать|болит|симптом|я болен|заболе|tashxis|davol|dori|ogriyapti|alomat|kasal|ташхис|муолича|дору|дард мекунад|аломат|бемор'))
+      return tr('Я не ставлю диагнозы и не назначаю лечение — это делает только врач. Могу объяснить, что такое то или иное исследование и как читать результат сервиса. С любыми жалобами лучше обратиться к врачу.');
+    if(has(t,'привет|здравств|добрый|салам|hello|salom|assalom|ассалом|салом'))
+      return tr('Здравствуйте! Я ИИ-консультант RadiScan. Расскажу про рентген, КТ и МРТ, помогу выбрать область, объясню результат анализа. Что вас интересует?');
+    if(has(t,'что умеешь|помо(щ|ги)|функци|что ты|nima qila|yordam|imkon|чи кара|кумак|имкон'))
+      return tr('Я могу:<br>• рассказать, что такое рентген, КТ и МРТ;<br>• объяснить, какие области доступны и когда их назначают;<br>• открыть нужную область в диагностике;<br>• объяснить результат вашего анализа;<br>• подсказать, как загрузить снимок.');
+    if(has(t,'результат|что нашли|объясни|что значит|заключен|процент|natija|tushuntir|xulosa|foiz|натича|шарх|хулоса|фоиз')) return explainResult();
+    if(has(t,'протокол|выписк|protokol|баенот'))
+      return tr('После анализа сервис формирует <b>протокол описания</b> по структуре врачебных шаблонов: разделы (например «Мозговое вещество», «Ликворосодержащие пространства»), отклонения выделены цветом, а размеры «__» заполняет врач. Протокол можно скопировать кнопкой внизу.');
+    if(has(t,'врем|секунд|длит|сколько.*(ждать|занима)|быстр|долго|vaqt|soniya|davom|qancha|tez|вакт|сония|давом|чанд'))
+      return tr('Время анализа можно выбрать: от <b>10 секунд</b> (экспресс) до <b>1 минуты</b> (углублённый). Нажмите на метку «Готово за…» на главном экране и выберите время. В демо анализ идёт ускоренно.');
+    if(has(t,'загруз|как.*(пользов|начат)|снимок.*(добав|отправ)|формат|dicom|файл|yukla|fayl|qanday foydalan|format|боргир|чи тавр истифода'))
+      return tr('1. Выберите вид исследования и область.<br>2. Загрузите снимок: файл JPG/PNG, файл DICOM (можно сразу всю серию) или нажмите «Сфотографировать» на телефоне. Фото сайт сам обрежет и улучшит.<br>3. Нажмите «Анализировать».<br>4. Получите вероятности, зоны, заключение и протокол.')+'<br>'+goBtn();
+    if(has(t,'точн|настоящ|реальн|нейросет|модел|работает ли|демо|на чем|aniq|haqiqiy|neyroset|model|demo|хакики|дакик|намоиши'))
+      return tr('Сейчас это <b>демонстрационный макет</b>: результаты анализа имитируются, настоящей нейросети внутри пока нет. Он показывает, как будет выглядеть сервис. Когда будет реальная модель, результаты станут настоящими — но и тогда это только предварительная оценка, а не диагноз.');
+    if(has(t,'област|какие.*(есть|доступ)|список|направлен|что.*(можно|доступно)|qaysi|royxat|yonalish|soha|соха|кадом|руйхат|самт|мавчуд'))
+      return tr('Доступно <b>{n} областей</b>:',{n:Object.values(MODES).reduce((n,m)=>n+m.studies.length,0)})+'<br>'
+        +Object.entries(MODES).map(([k,m])=>`• <b>${tr(MODEINFO[k][0])}</b>: ${m.studies.map(s=>tr(INFO[s].gen)).join(', ')}`).join('<br>')
+        +'<br>'+tr('Назовите область — расскажу подробнее.');
+    const pairs=pairsFor(t);
+    if(pairs.length){const first=pairs.slice(0,3);return first.map(([m,s])=>studyCard(m,s)).join('<br><br>')+'<br>'+first.map(([m,s])=>openBtn(m,s)).join('');}
+    for(const [ks,m] of MODE_KEYS) if(has(t,ks)) return modeAnswer(m)+'<br>'+`<button type="button" class="ai-act" data-m="${m}" data-s="${MODES[m].studies[0]}">${tr('Открыть')} ${tr(MODEINFO[m][0])} →</button>`;
+    if(has(t,'спасибо|благодар|rahmat|рахмат|ташаккур')) return tr('Пожалуйста! Если появятся вопросы — пишите.');
+    return tr('Пока я отвечаю на вопросы по сервису: что такое рентген, КТ и МРТ, какие есть области, как загрузить снимок и как читать результат. Попробуйте, например: «Что показывает МРТ головы?» или нажмите подсказку ниже.');
+  }
+  function ask(q){
+    q=q.trim();if(!q)return;
+    add('user',esc(q));
+    const typing=add('bot typing','<span></span><span></span><span></span>');
+    setTimeout(()=>{typing.remove();add('bot',reply(q));},450+Math.min(900,q.length*20));
+  }
+  function greet(){add('bot',tr('Здравствуйте! Я <b>ИИ-консультант</b> RadiScan. Расскажу про рентген, КТ и МРТ, подскажу область и объясню результат анализа.<br><small>Это демо: ответы шаблонные, не медицинская консультация.</small>'));}
+  function toggle(open){
+    const o=open===undefined?panel.hidden:open;panel.hidden=!o;fab.classList.toggle('on',o);
+    if(o){if(!started){started=true;greet();}setTimeout(()=>input.focus(),50);}
+  }
+  /* one set of delegated listeners survives panel rebuilds */
+  panel.addEventListener('submit',e=>{e.preventDefault();const v=input.value;input.value='';ask(v);});
+  panel.addEventListener('click',e=>{
+    if(e.target.closest('.ai-x')){toggle(false);return;}
+    const c=e.target.closest('.ai-chips button');if(c){ask(c.textContent);return;}
+    const b=e.target.closest('.ai-act');if(!b)return;
+    if(b.dataset.go==='lab'){$('lab').scrollIntoView({behavior:'smooth'});}else openStudy(b.dataset.m,b.dataset.s);
+    if(innerWidth<=880) toggle(false);
+  });
+  fab.addEventListener('click',()=>toggle());
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!panel.hidden)toggle(false);});
+  document.addEventListener('langchange',()=>{const wasOpen=!panel.hidden;build();if(wasOpen)toggle(true);});
+  build();
+})();
+
+/* ---------- language switcher + re-render of all dynamic parts ---------- */
+const langEl=$('lang');
+function buildLang(){
+  langEl.innerHTML=`<button type="button" class="lang-btn" id="langBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Language"><span class="flag">${FLAGS[LANG]}</span><b>${LANGS[LANG].code}</b><em>▾</em></button>
+    <ul class="lang-menu" id="langMenu" role="listbox" hidden>${Object.entries(LANGS).map(([k,l])=>
+      `<li role="option" tabindex="0" data-l="${k}" aria-selected="${k===LANG}" class="${k===LANG?'on':''}"><span class="flag">${FLAGS[k]}</span><span>${l.name}</span><i>✓</i></li>`).join('')}</ul>`;
+}
+function setLang(l,silent){
+  if(!LANGS[l])return;
+  LANG=l; try{localStorage.setItem('lang',l);}catch(_){}
+  buildLang(); applyStatic();
+  document.querySelectorAll('.eyebrow').forEach(e=>{e.textContent=tr(e.dataset.k);});
+  renderModes(); renderStudies(); buildCoverage();
+  $('hud').textContent=img?`${tr(MODES[mode].name).toUpperCase()} · ${tr(STUDIES[study].name).toUpperCase()}`:'';
+  if(img){$('badge').textContent=badgeText();}
+  if(result) renderReport(); else $('report').innerHTML=infoHTML();
+  if(typeof statOpen!=='undefined'&&statOpen) statPanel.innerHTML=STATP[statOpen]();
+  document.dispatchEvent(new Event('langchange'));
+}
+langEl.addEventListener('click',e=>{
+  const li=e.target.closest('li[data-l]');
+  if(li){setLang(li.dataset.l);return;}
+  const b=e.target.closest('#langBtn');if(!b)return;
+  const m=$('langMenu'),open=m.hidden;m.hidden=!open;b.setAttribute('aria-expanded',open);
+});
+langEl.addEventListener('keydown',e=>{
+  const li=e.target.closest('li[data-l]');
+  if(li&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setLang(li.dataset.l);}
+});
+document.addEventListener('click',e=>{if(!e.target.closest('#lang')){const m=$('langMenu');if(m&&!m.hidden){m.hidden=true;$('langBtn').setAttribute('aria-expanded',false);}}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const m=$('langMenu');if(m&&!m.hidden){m.hidden=true;$('langBtn').setAttribute('aria-expanded',false);}}});
+buildLang();
+if(LANG!=='ru') setLang(LANG);
+
+/* eyebrows + reveal on scroll */
+[['#lab h2','Анализ'],['#how h2','Процесс'],['#coverage h2','Покрытие']].forEach(([s,t])=>{
+  const e=document.createElement('span');e.className='eyebrow';e.dataset.k=t;e.textContent=tr(t);document.querySelector(s).before(e);});
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.08});
+document.querySelectorAll('.hero .wrap>div,.mode,.lab>.panel,.step,.list .panel,.warn-box').forEach((el,i)=>{
+  el.classList.add('reveal');el.style.transitionDelay=(i%4)*80+'ms';io.observe(el);});
+</script>
+</body>
+</html>
