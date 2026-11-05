@@ -1546,6 +1546,13 @@ $('heatToggle').onchange=drawHeat;
   btns.forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();go(+b.dataset.v);}));
   show(62);
   document.addEventListener('langchange',()=>show(cur));
+  /* real chest radiograph replaces the drawn one (falls back to the drawing if the file is missing) */
+  const ph=new Image();
+  ph.onload=()=>{
+    const b=base.getContext('2d'),s=Math.min(ph.width,ph.height),sx=(ph.width-s)/2,sy=(ph.height-s)/2;
+    b.fillStyle='#000';b.fillRect(0,0,N,N);b.drawImage(ph,sx,sy,s,s,0,0,N,N);show(cur);
+  };
+  ph.src='images/hero-chest.png';
 })();
 
 renderModes(); renderStudies(); enter();
